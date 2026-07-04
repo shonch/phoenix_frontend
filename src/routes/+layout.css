@@ -1,0 +1,184 @@
+/* GLOBAL BACKGROUND — deep arctic slate */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
+
+/* GLOBAL THEME VARIABLES */
+:root {
+    --phoenix-font: 'Cinzel', serif;
+
+    /* Phoenix theme colors */
+    --bg: #0a1a24;
+    --fg: #00cfff;
+    --accent: #00eaff;
+}
+
+/* Apply theme globally */
+body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--phoenix-font);
+    margin: 0;
+    overflow-x: hidden;
+}
+
+/* ⭐ FIX: REMOVE BROKEN HYDRATION WRAPPER */
+/* (deleted entirely) */
+
+/* ⭐ LAYOUT CONTAINER — FIXED */
+.layout {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    position: relative;
+    background-color: var(--bg);
+
+    /* FIX: allow content to flow normally */
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+
+
+/* MAIN CONTENT */
+main {
+    flex: 1;
+    display: block; /* FIX */
+    padding: 2rem;
+    background: transparent;
+    z-index: 1;
+    min-height: 100vh;
+
+    /* FIX: allow scrolling */
+    overflow-y: auto;
+}
+
+
+/* MODE RUNE TOGGLE */
+.mode-rune {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    font-size: 1.8rem;
+    cursor: pointer;
+    user-select: none;
+    opacity: 0.75;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    color: rgba(255,255,255,0.85);
+    text-shadow: 0 0 8px rgba(150, 200, 255, 0.6);
+    z-index: 9999;
+}
+
+.mode-rune:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    text-shadow: 0 0 12px rgba(180, 220, 255, 0.9);
+}
+
+/* MENU ITEMS — frozen glow */
+.sidebar a {
+    display: block;
+    margin: 0.75rem 0;
+    text-decoration: none;
+    font-size: 1.1rem;
+    color: var(--accent);
+    text-shadow:
+        0 0 6px rgba(0, 255, 255, 0.7),
+        0 0 14px rgba(0, 255, 255, 0.5),
+        0 0 28px rgba(0, 255, 255, 0.3);
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.sidebar a:hover {
+    color: #a8ffff;
+    text-shadow:
+        0 0 10px rgba(255, 255, 255, 0.9),
+        0 0 20px rgba(0, 255, 255, 0.7),
+        0 0 30px rgba(180, 240, 255, 0.6);
+}
+
+/* HEADERS — cryogenic blue */
+h1,
+.codex-header,
+.codex-title,
+.collection-name {
+    font-family: 'EB Garamond', serif;
+    font-size: 2.2rem;
+    color: var(--accent);
+    text-shadow:
+        0 0 8px rgba(0, 255, 255, 0.7),
+        0 0 16px rgba(180, 240, 255, 0.5),
+        0 0 32px rgba(0, 255, 255, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+/* flowing aurora mist — now swirling */
+h1::before,
+.codex-header::before,
+.codex-title::before,
+.collection-name::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -70%;
+    width: 70%;
+    height: 100%;
+    background: radial-gradient(
+        circle at 50% 50%,
+        rgba(255, 255, 255, 0.4) 0%,
+        rgba(255, 255, 255, 0.2) 40%,
+        transparent 80%
+    );
+    mix-blend-mode: screen;
+    animation: swirlMist 16s infinite ease-in-out;
+    filter: blur(6px);
+}
+
+@keyframes swirlMist {
+    0% {
+        transform: translate(-70%, 0) rotate(0deg);
+        opacity: 0.2;
+    }
+    40% {
+        transform: translate(50%, 10px) rotate(180deg);
+        opacity: 0.6;
+    }
+    60% {
+        transform: translate(70%, -10px) rotate(270deg);
+        opacity: 0.4;
+    }
+    100% {
+        transform: translate(120%, 0) rotate(360deg);
+        opacity: 0.2;
+    }
+}
+
+/* faint horizontal vapor lines — softened edges */
+body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(0, 255, 255, 0.03) 0px,
+            rgba(0, 255, 255, 0.03) 2px,
+            transparent 4px
+        );
+    filter: blur(4px);
+    opacity: 0.25;
+    pointer-events: none;
+    animation: driftMist 40s linear infinite;
+}
+
+@keyframes driftMist {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(-30px);
+    }
+}
+
