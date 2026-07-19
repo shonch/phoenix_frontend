@@ -1,127 +1,156 @@
-<script>
-    const { data } = $props();
+<script lang="ts">
+  const { data } = $props();
 
-    // --- SCHEMA-ADAPTIVE EXTRACTION ---
+  const patterns = data?.patterns ?? [];
+  const fatigueIndicators = data?.fatigue_indicators ?? [];
+  const overridePatterns = data?.override_patterns ?? [];
+  const cycles = data?.cycles ?? [];
+  const anomalies = data?.anomalies ?? [];
 
-    // Summary: use backend summary if present, otherwise fallback to known grind fields
-    const summary = data?.summary ?? {
-        grind_events: data?.grind_events,
-        friction_points: data?.friction_points,
-        overrides: data?.overrides
-    };
-
-    // Grind items: prefer new schema, fallback to old
-    const items = data?.items ?? data?.grind_items ?? data?.recent ?? [];
+  function formatDate(value: string | null) {
+    if (!value) return "";
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? String(value) : d.toLocaleDateString();
+  }
 </script>
 
 <div class="engine-container">
+  <header class="engine-header">
+    <h1>⚙️ Grind Engine</h1>
+    <p class="subtitle">Friction, fatigue, and override patterns across your fragments.</p>
+  </header>
 
-    <section class="engine-header">
-        <h1>⚙️ Grind Engine</h1>
-        <p class="subtitle">Operational load, friction points, and system churn</p>
+  <section class="panel">
+    <h2>Recurring Tags</h2>
+    {#if patterns.length === 0}
+      <p class="empty">No recurring grind tags yet.</p>
+    {:else}
+      <ul class="tag-list">
+        {#each patterns as p}
+          <li><strong>{p.tag}</strong> — {p.count} {p.count === 1 ? "time" : "times"}</li>
+        {/each}
+      </ul>
+    {/if}
+  </section>
+
+  <section class="panel">
+    <h2>Fatigue Indicators</h2>
+    {#if fatigueIndicators.length === 0}
+      <p class="empty">No fatigue indicators logged.</p>
+    {:else}
+      <ul class="event-list">
+        {#each fatigueIndicators as f}
+          <li>
+            <strong>{f.type.replace(/_/g, " ")}</strong>
+            {#if f.energy != null}<span> — energy: {f.energy}</span>{/if}
+            <small>{formatDate(f.timestamp)}</small>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </section>
+
+  <section class="panel">
+    <h2>Override Actions</h2>
+    {#if overridePatterns.length === 0}
+      <p class="empty">No override actions logged.</p>
+    {:else}
+      <ul class="event-list">
+        {#each overridePatterns as o}
+          <li>
+            <strong>{o.action}</strong>
+            <small>{formatDate(o.timestamp)}</small>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </section>
+
+  <section class="panel">
+    <h2>Grind → Override Cycles</h2>
+    {#if cycles.length === 0}
+      <p class="empty">No grind-to-override cycles detected yet.</p>
+    {:else}
+      <ul class="event-list">
+        {#each cycles as c}
+          <li>
+            Recovered <strong>{Math.round(c.time_between)} min</strong> after grinding
+            <small>{formatDate(c.timestamp_scan)}</small>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </section>
+
+  {#if anomalies.length > 0}
+    <section class="panel">
+      <h2>Notes</h2>
+      <ul class="event-list">
+        {#each anomalies as a}
+          <li>{a.type.replace(/_/g, " ")}</li>
+        {/each}
+      </ul>
     </section>
-
-    <!-- SUMMARY -->
-    <section class="summary-panel">
-        <h2>Summary</h2>
-
-        {#if !summary}
-            <p>No summary available.</p>
-
-        {:else if typeof summary === 'string'}
-            <p>{summary}</p>
-
-        {:else}
-            <ul>
-                {#each Object.entries(summary) as [key, value]}
-                    {#if value != null}
-                        <li><strong>{key}:</strong> {value}</li>
-                    {/if}
-                {/each}
-            </ul>
-        {/if}
-    </section>
-
-    <!-- GRIND ITEMS -->
-    <section class="items-panel">
-        <h2>Grind Items</h2>
-
-        {#if !items || items.length === 0}
-            <p>No grind items detected.</p>
-        {:else}
-            <ul class="item-list">
-                {#each items as item}
-                    <li class="item">
-                        <strong>{item.label ?? item.subject ?? 'Item'}</strong>
-
-                        {#if item.description}
-                            <p>{item.description}</p>
-                        {/if}
-
-                        {#if item.reason}
-                            <p>{item.reason}</p>
-                        {/if}
-
-                        {#if item.timestamp}
-                            <small>{item.timestamp}</small>
-                        {:else if item.date}
-                            <small>{item.date}</small>
-                        {/if}
-                    </li>
-                {/each}
-            </ul>
-        {/if}
-    </section>
-
-    <!-- RAW JSON -->
-    <details class="raw-panel">
-        <summary>Raw JSON</summary>
-        <pre>{JSON.stringify(data, null, 2)}</pre>
-    </details>
-
+  {/if}
 </div>
 
 <style>
-    .engine-container {
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
-        padding: 1rem;
-    }
+  .engine-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    padding: 1rem;
+    color: #e8dcb8;
+  }
 
-    .engine-header h1 {
-        margin: 0;
-        color: #e8dcb8;
-    }
+  .engine-header h1 {
+    margin: 0;
+  }
 
-    .subtitle {
-        opacity: 0.7;
-        margin-top: 0.25rem;
-    }
+  .subtitle {
+    opacity: 0.7;
+    margin-top: 0.25rem;
+  }
 
-    .summary-panel ul,
-    .items-panel ul {
-        list-style: none;
-        padding: 0;
-    }
+  .panel {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(232, 220, 184, 0.2);
+    border-radius: 10px;
+    padding: 1.1rem 1.25rem;
+  }
 
-    .item-list .item {
-        padding: 0.75rem;
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 6px;
-        margin-bottom: 0.75rem;
-        background: rgba(255,255,255,0.05);
-    }
+  .panel h2 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1.1rem;
+    color: #e8dcb8;
+  }
 
-    .raw-panel {
-        margin-top: 2rem;
-    }
+  .empty {
+    opacity: 0.6;
+    font-style: italic;
+    margin: 0;
+  }
 
-    pre {
-        background: rgba(0,0,0,0.4);
-        padding: 1rem;
-        border-radius: 6px;
-        overflow: auto;
-    }
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .event-list li,
+  .tag-list li {
+    padding: 0.6rem 0.8rem;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .event-list small {
+    display: block;
+    opacity: 0.6;
+    margin-top: 0.2rem;
+  }
 </style>
-

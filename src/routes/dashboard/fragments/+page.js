@@ -1,10 +1,15 @@
 export async function load({ parent }) {
-    const { state } = await parent();
-
-    const fragments = state?.raw?.fragments ?? [];
+    const parentData = await parent();
+    const raw = parentData.state?.raw ?? {};
 
     return {
-        fragments: structuredClone(fragments)
+        ...parentData,
+        collections: {
+            fragments: raw.fragments ?? [],
+            emotional_fragments: raw.emotional_fragments ?? [],
+            clues: raw.clues ?? [],
+            thresholds: raw.thresholds ?? [],
+            revelations: raw.revelations ?? []
+        }
     };
 }
-

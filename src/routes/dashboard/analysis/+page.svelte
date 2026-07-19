@@ -5,44 +5,66 @@
     // all analysis engines live here
     const analysis = state?.analysis ?? {};
 
-    const engines = [
-        {
-            key: 'grief',
-            label: 'Grief',
-            icon: '💙',
-            color: '#8ab4ff',
-            description: 'Emotional waves, loss, and long arcs of grief.'
-        },
-        {
-            key: 'thresholds',
-            label: 'Thresholds',
-            icon: '🛡️',
-            color: '#ffcf70',
-            description: 'Boundaries, pressure, and resilience under load.'
-        },
-        {
-            key: 'signals',
-            label: 'Signals',
-            icon: '📡',
-            color: '#c7a6ff',
-            description: 'Recurring patterns, pings, and anomalies.'
-        },
-        {
-            key: 'mirror',
-            label: 'Mirror',
-            icon: '🪞',
-            color: '#dfe4ff',
-            description: 'Self‑reflection, alignment, and contradictions.'
-        },
-        {
-            key: 'grind',
-            label: 'Grind',
-            icon: '⚙️',
-            color: '#bbbbbb',
-            description: 'Operational friction, load, and system wear.'
-        }
-        // tags, classifiers, phoenix_state can be added later
-    ];
+const engines = [
+    {
+        key: 'emotion',
+        label: 'Emotion',
+        icon: '💫',
+        color: '#c9a6ff',
+        description: 'Emotional embers and tag echoes across your fragments.'
+    },
+    {
+        key: 'grief',
+        label: 'Grief',
+        icon: '💙',
+        color: '#8ab4ff',
+        description: 'Emotional waves, loss, and long arcs of grief.'
+    },
+    {
+        key: 'thresholds',
+        label: 'Thresholds',
+        icon: '🛡️',
+        color: '#ffcf70',
+        description: 'Boundaries, pressure, and resilience under load.'
+    },
+    {
+        key: 'signals',
+        label: 'Signals',
+        icon: '📡',
+        color: '#c7a6ff',
+        description: 'Recurring patterns, pings, and anomalies.'
+    },
+    {
+        key: 'mirror',
+        label: 'Mirror',
+        icon: '🪞',
+        color: '#dfe4ff',
+        description: 'Self‑reflection, alignment, and contradictions.'
+    },
+    {
+        key: 'grind',
+        label: 'Grind',
+        icon: '⚙️',
+        color: '#bbbbbb',
+        description: 'Operational friction, load, and system wear.'
+    },
+    {
+        key: 'detective',
+        label: 'Detective',
+        icon: '🕵️',
+        color: '#ff9c6b',
+        description: 'Recurring clues, echoes, and unresolved threads.'
+    },
+    {
+        key: 'frisson',
+        label: 'Frisson',
+        icon: '⚡',
+        color: '#ffe27a',
+        description: 'Triggers and the contexts that surround them.'
+    }
+    // tags, classifiers, phoenix_state can be added later
+];
+
 </script>
 
 <div class="analysis-dashboard">

@@ -9,9 +9,29 @@
     placeholder = "Add a tag..."
   } = $props();
 
+  // ⭐ Proxy‑safe unwrap for selected tags
+  const safeSelected = $derived(() => {
+    if (!selected) return [];
+    try {
+      return Array.from(selected);
+    } catch {
+      return [];
+    }
+  });
+
   let query = $state("");
   let suggestions = $state([]);
   let loading = $state(false);
+
+  // ⭐ Proxy‑safe unwrap for suggestions
+  const safeSuggestions = $derived(() => {
+    if (!suggestions) return [];
+    try {
+      return Array.from(suggestions);
+    } catch {
+      return [];
+    }
+  });
 
   // ⭐ Fetch suggestions from backend
   async function fetchSuggestions(text: string) {
@@ -25,9 +45,12 @@
     try {
       const res = await fetch(`/api/tags/suggest?query=${encodeURIComponent(text)}`);
       const data = await res.json();
-      suggestions = data.tags || [];
+
+      // ⭐ Ensure suggestions is a real array
+      suggestions = Array.isArray(data.tags) ? data.tags : [];
     } catch (err) {
       console.error("Tag suggestion error:", err);
+      suggestions = [];
     }
 
     loading = false;
@@ -71,7 +94,7 @@
 <div class="selector">
   <!-- Selected tags -->
   <div class="selected">
-    {#each selected as tag (tag.tag_id ?? tag.name)}
+    {#each safeSelected as tag (tag.tag_id ?? tag.name)}
       <TagChip tag={tag} />
     {/each}
   </div>
@@ -85,11 +108,11 @@
   />
 
   <!-- Suggestions -->
-  {#if suggestions.length > 0}
+  {#if safeSuggestions.length > 0}
     <div class="suggestions">
-      {#each suggestions as tag (tag.tag_id)}
+      {#each safeSuggestions as tag (tag.tag_id ?? tag.name)}
         <div class="suggestion" onclick={() => selectTag(tag)}>
-          {tag.emoji ?? "🏷️"} {tag.name}
+          {String(tag.emoji ?? "🏷️")} {String(tag.name)}
         </div>
       {/each}
 

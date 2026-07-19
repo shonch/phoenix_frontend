@@ -4,10 +4,19 @@
 
     const { data } = $props();
 
-    const fragment = $derived(() =>
-        formatFragment(data.fragment)
-    );
+    const fragment = data.fragment ? formatFragment(data.fragment) : null;
 </script>
 
-<FragmentDetail fragment={$fragment} />
+{#if fragment}
+    <FragmentDetail fragment={fragment} />
+{:else}
+    <p class="not-found">Fragment not found.</p>
+{/if}
 
+<style>
+    .not-found {
+        margin-top: 2rem;
+        color: #999;
+        text-align: center;
+    }
+</style>

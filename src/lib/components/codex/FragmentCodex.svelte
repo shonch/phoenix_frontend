@@ -1,32 +1,27 @@
 <script lang="ts">
-    import { state, props } from "svelte";
+    let props = $props();
 
-    const { fragment } = props();
+    // Reactive fragment
+    let fragment = $derived(() => props.fragment ?? {});
 
-    // Debug
-    console.log("Rendering fragment (SAFE MODE):", fragment);
+    // State containers (safe defaults)
+    let title = $state("");
+    let tags = $state([]);
+    let body = $state("");
 
-    // Runes-friendly reactive fields
-    const title = state(fragment?.title ?? "");
-    const tags = state(fragment?.tags ?? []);
-    const body = state(fragment?.html ?? fragment?.preview ?? "");
-
-    // Manual update if fragment changes
-    // (Runes Mode does NOT allow $: or derived/effect)
-    function update() {
-        title.set(fragment?.title ?? "");
-        tags.set(fragment?.tags ?? []);
-        body.set(fragment?.html ?? fragment?.preview ?? "");
-    }
-
-    update();
+    // Reactive update when fragment changes
+    $effect(() => {
+        title = fragment.title ?? "";
+        tags = fragment.tags ?? [];
+        body = fragment.html ?? fragment.preview ?? "";
+    });
 </script>
 
 <div class="fragment-card debug-border">
     <aside class="tag-column">
         <div class="tag-label">Mythica Tags</div>
 
-        {#each tags.get() as tag}
+        {#each tags as tag}
             <div class="tag-pill">
                 {#if tag?.emoji}{tag.emoji} {/if}
                 {tag?.name ?? "(unnamed tag)"}
@@ -36,9 +31,9 @@
 
     <section class="fragment-main">
         <h2 class="fragment-title">
-            {#if title.get()}
-                <span class="dropcap">{title.get()[0] ?? "∅"}</span>
-                {title.get()}
+            {#if title}
+                <span class="dropcap">{title[0] ?? "∅"}</span>
+                {title}
             {:else}
                 <span class="dropcap">∅</span>
                 <em>(untitled fragment)</em>
@@ -46,12 +41,8 @@
         </h2>
 
         <div class="fragment-body">
-            <pre class="fragment-pre">{body.get()}</pre>
+            <pre class="fragment-pre">{body}</pre>
         </div>
     </section>
 </div>
-
-<style>
-    /* your original styles */
-</style>
 

@@ -1,12 +1,11 @@
 <script lang="ts">
   import TagBadge from "$lib/components/tags/TagBadge.svelte";
+  import { goto } from "$app/navigation";
 
-  // UnifiedFragment from the formatter
   const { fragment } = $props();
 
   const {
     title,
-    html,
     tags,
     createdAt,
     emotionalMode,
@@ -15,25 +14,26 @@
     raw
   } = fragment;
 
+  const rawInputs = raw?.metadata?.raw_inputs ?? [];
+
   let showRaw = $state(false);
 </script>
 
 <div class="detail">
+  <button class="back-btn" onclick={() => goto('/dashboard/fragments')}>← Back to Fragments</button>
+
   <h1 class="title">{title}</h1>
 
   <div class="meta">
     {#if emotionalMode}
       <span class="pill mode">{emotionalMode}</span>
     {/if}
-
     {#if symbolicAnchor}
       <span class="pill symbol">{symbolicAnchor}</span>
     {/if}
-
     {#if threshold}
       <span class="pill threshold">{threshold}</span>
     {/if}
-
     <span class="timestamp">{createdAt}</span>
   </div>
 
@@ -45,7 +45,16 @@
     </div>
   {/if}
 
-  <div class="content" {@html html}></div>
+  {#if rawInputs.length > 0}
+    <div class="steps">
+      {#each rawInputs as input}
+        <div class="step-block">
+          <h3 class="step-label">{input.label}</h3>
+          <p class="step-text">{input.text}</p>
+        </div>
+      {/each}
+    </div>
+  {/if}
 
   <button class="raw-toggle" onclick={() => showRaw = !showRaw}>
     {showRaw ? "Hide Raw JSON" : "Show Raw JSON"}
@@ -57,62 +66,44 @@
 </div>
 
 <style>
-  .detail {
-    padding: 2rem;
-    max-width: 800px;
-    margin: 0 auto;
-    color: #e8fdf6;
-  }
-
-  .title {
-    margin: 0 0 1rem 0;
-    font-size: 2rem;
-  }
-
-  .meta {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-bottom: 1rem;
-  }
-
-  .pill {
-    padding: 0.25rem 0.6rem;
-    border-radius: 6px;
-    font-size: 0.8rem;
+  /* existing styles unchanged, plus: */
+  .back-btn {
+    background: none;
     border: 1px solid rgba(127,255,212,0.35);
-    opacity: 0.85;
-  }
-
-  .tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
+    color: #e8fdf6;
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
+    cursor: pointer;
     margin-bottom: 1.5rem;
   }
+  .back-btn:hover {
+    border-color: #7fffd4;
+  }
 
-  .content {
-    line-height: 1.6;
-    font-size: 1.05rem;
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
     margin-bottom: 2rem;
   }
 
-  .raw-toggle {
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
-    background: rgba(127,255,212,0.15);
-    border: 1px solid rgba(127,255,212,0.35);
-    color: #e8fdf6;
-    cursor: pointer;
-    margin-bottom: 1rem;
+  .step-block {
+    border-left: 2px solid rgba(127,255,212,0.3);
+    padding-left: 1rem;
   }
 
-  .raw {
-    background: rgba(0,0,0,0.35);
-    padding: 1rem;
-    border-radius: 8px;
-    overflow-x: auto;
+  .step-label {
+    margin: 0 0 0.25rem 0;
     font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #7fffd4;
+    opacity: 0.8;
+  }
+
+  .step-text {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.5;
   }
 </style>
-

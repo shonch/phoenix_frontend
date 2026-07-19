@@ -1,176 +1,134 @@
-<script>
-    const { data } = $props();
+<script lang="ts">
+  import { goto } from "$app/navigation";
 
-    // --- SCHEMA-ADAPTIVE EXTRACTION ---
+  const { data } = $props();
 
-    // Summary: use backend fields if summary is missing
-    const summary = data?.summary ?? {
-        total_emotional_fragments: data?.total_emotional_fragments,
-        grief_events: data?.grief_events
-    };
+  const totalFragments = data?.total_emotional_fragments ?? 0;
+  const griefEvents = data?.grief_events ?? 0;
+  const recentGrief = data?.recent_grief ?? [];
 
-    // Stages: only show if backend provides them
-    const stages = data?.stages ?? [];
+  function openFragment(id: string) {
+    goto(`/dashboard/fragments/${id}`);
+  }
 
-    // Recent fragments: prefer new schema, fallback to old
-    const recent = data?.recent ?? data?.recent_grief ?? [];
-
-    // Intensity: optional
-    const intensity = data?.intensity ?? [];
+  function formatDate(iso: string | null) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? "" : d.toLocaleDateString();
+  }
 </script>
 
 <div class="grief-container">
+  <header class="header">
+    <h1>💙 Grief Engine</h1>
+    <p class="subtitle">Waves of grief across your fragments.</p>
+  </header>
 
-    <!-- HEADER -->
-    <section class="header">
-        <h1>💙 Grief Engine</h1>
-        <p class="subtitle">Emotional waves, cycles, anchors, and releases</p>
-    </section>
+  <section class="panel">
+    <p class="stat-line">
+      <strong>{griefEvents}</strong> of <strong>{totalFragments}</strong>
+      emotional fragments have touched grief.
+    </p>
+  </section>
 
-    <!-- SUMMARY -->
-    <section class="panel">
-        <h2>Summary</h2>
+  <section class="panel">
+    <h2>Recent Grief Fragments</h2>
 
-        {#if !summary || Object.values(summary).every(v => v == null)}
-            <p>No summary available.</p>
-        {:else}
-            <ul>
-                {#each Object.entries(summary) as [key, value]}
-                    {#if value != null}
-                        <li><strong>{key}:</strong> {value}</li>
-                    {/if}
-                {/each}
-            </ul>
-        {/if}
-    </section>
-
-    <!-- STAGES (optional) -->
-    {#if stages && stages.length > 0}
-        <section class="panel">
-            <h2>Detected Grief Stages</h2>
-            <ul class="stage-list">
-                {#each stages as stage}
-                    <li class="stage">
-                        <strong>{stage.name}</strong>
-                        <p>{stage.description}</p>
-                    </li>
-                {/each}
-            </ul>
-        </section>
+    {#if recentGrief.length === 0}
+      <p class="empty">No grief fragments logged yet.</p>
+    {:else}
+      <div class="fragment-list">
+        {#each recentGrief as f}
+          <button class="fragment-item" onclick={() => openFragment(f.id)}>
+            <span class="frag-subject">{f.subject ?? "Untitled"}</span>
+            <span class="frag-date">{formatDate(f.date)}</span>
+            {#if f.weather}
+              <span class="frag-weather">{f.weather}</span>
+            {/if}
+          </button>
+        {/each}
+      </div>
     {/if}
-
-    <!-- RECENT FRAGMENTS -->
-    <section class="panel">
-        <h2>Recent Grief Fragments</h2>
-
-        {#if !recent || recent.length === 0}
-            <p>No recent grief fragments.</p>
-        {:else}
-            <ul class="fragment-list">
-                {#each recent as frag}
-                    <li class="fragment">
-                        <!-- content or tags -->
-                        {#if frag.content}
-                            <pre>{frag.content}</pre>
-                        {:else if frag.tags}
-                            <pre>{frag.tags.join(', ')}</pre>
-                        {/if}
-
-                        <!-- timestamp -->
-                        {#if frag.timestamp}
-                            <small>{frag.timestamp}</small>
-                        {:else if frag.date}
-                            <small>{frag.date}</small>
-                        {/if}
-
-                        <!-- weather -->
-                        {#if frag.weather}
-                            <p><em>{frag.weather}</em></p>
-                        {/if}
-                    </li>
-                {/each}
-            </ul>
-        {/if}
-    </section>
-
-    <!-- INTENSITY (optional) -->
-    {#if intensity && intensity.length > 0}
-        <section class="panel">
-            <h2>Intensity Timeline</h2>
-            <ul class="intensity-list">
-                {#each intensity as point}
-                    <li>
-                        <strong>{point.level}</strong>
-                        <span> — {point.label}</span>
-                    </li>
-                {/each}
-            </ul>
-        </section>
-    {/if}
-
-    <!-- RAW JSON -->
-    <details class="raw">
-        <summary>Raw JSON</summary>
-        <pre>{JSON.stringify(data, null, 2)}</pre>
-    </details>
-
+  </section>
 </div>
 
 <style>
-    .grief-container {
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
-        padding: 1rem;
-        color: #dce7ff;
-    }
+  .grief-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 1rem;
+    color: #dce7ff;
+  }
 
-    .header h1 {
-        margin: 0;
-        color: #8ab4ff;
-    }
+  .header h1 {
+    margin: 0;
+    color: #8ab4ff;
+  }
 
-    .subtitle {
-        opacity: 0.7;
-        margin-top: 0.25rem;
-    }
+  .subtitle {
+    opacity: 0.7;
+    margin-top: 0.25rem;
+  }
 
-    .panel {
-        background: rgba(20, 40, 80, 0.35);
-        padding: 1.25rem;
-        border-radius: 8px;
-        border: 1px solid rgba(120, 160, 255, 0.2);
-    }
+  .panel {
+    background: rgba(20, 40, 80, 0.35);
+    padding: 1.25rem;
+    border-radius: 10px;
+    border: 1px solid rgba(120, 160, 255, 0.2);
+  }
 
-    .panel h2 {
-        margin-top: 0;
-        color: #a8c4ff;
-    }
+  .panel h2 {
+    margin-top: 0;
+    color: #a8c4ff;
+    font-size: 1.2rem;
+  }
 
-    ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
+  .stat-line {
+    margin: 0;
+    font-size: 1.05rem;
+  }
 
-    .stage, .fragment {
-        padding: 0.75rem;
-        margin-bottom: 0.75rem;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 6px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
+  .empty {
+    opacity: 0.6;
+    font-style: italic;
+  }
 
-    .fragment pre {
-        margin: 0 0 0.5rem 0;
-        white-space: pre-wrap;
-    }
+  .fragment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 
-    .raw pre {
-        background: rgba(0, 0, 0, 0.4);
-        padding: 1rem;
-        border-radius: 6px;
-        overflow: auto;
-    }
+  .fragment-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.7rem 1rem;
+    background: rgba(120, 160, 255, 0.08);
+    border: 1px solid rgba(120, 160, 255, 0.2);
+    border-radius: 8px;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .fragment-item:hover {
+    background: rgba(120, 160, 255, 0.15);
+  }
+
+  .frag-subject {
+    font-weight: 600;
+  }
+
+  .frag-date {
+    font-size: 0.8rem;
+    opacity: 0.7;
+  }
+
+  .frag-weather {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    font-style: italic;
+  }
 </style>
-

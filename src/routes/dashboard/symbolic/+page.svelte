@@ -1,19 +1,15 @@
 <script>
     const { data } = $props();
 
-    // Tag Engine output
     const symbolic = $derived(data?.symbolic ?? {});
 
     const tagFrequency = $derived(symbolic.tag_frequency ?? []);
     const archetypes = $derived(symbolic.archetypes ?? []);
     const constellations = $derived(symbolic.co_occurrence ?? []);
-    const clues = $derived(symbolic.clues ?? []);
-    const summary = $derived(symbolic.summary ?? "No symbolic activity.");
 </script>
 
 <div class="mythic-container">
     <h1 class="mythic-title">Symbolic Dashboard</h1>
-    <p class="summary">{summary}</p>
 
     <div class="rune-divider">ᚠᛇᚻ</div>
     <section class="panel">
@@ -77,16 +73,6 @@
             </tbody>
         </table>
     </section>
-
-    <div class="rune-divider">ᛉᛟᚱ</div>
-    <section class="panel">
-        <h2>Clues</h2>
-        <ul>
-            {#each clues as clue}
-                <li class="floaty">{clue}</li>
-            {/each}
-        </ul>
-    </section>
 </div>
 
 <style>
@@ -148,15 +134,6 @@
         0% { transform: translateY(0px); }
         50% { transform: translateY(-4px); }
         100% { transform: translateY(0px); }
-    }
-
-    .summary {
-        text-align: center;
-        margin-bottom: 2rem;
-        opacity: 0.85;
-        font-style: italic;
-        position: relative;
-        z-index: 1;
     }
 
     /* --- PANELS --- */
@@ -227,4 +204,3 @@
         padding-left: 1.2rem;
     }
 </style>
-

@@ -3,9 +3,9 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
 
-  const current = $derived(() => $page.url.pathname);
-  const hideSidebar = $derived(() => current().startsWith("/rituals"));
-  const isIngest = $derived(() => hideSidebar());
+  const current = $derived($page.url.pathname);
+  const hideSidebar = $derived(current.startsWith("/rituals"));
+  const isIngest = $derived(hideSidebar);
 </script>
 
 <style src="./+layout.css"></style>
@@ -14,9 +14,9 @@
   class="mode-rune"
   role="button"
   tabindex="0"
-  onclick={() => goto(isIngest() ? '/dashboard' : '/rituals')}
+  onclick={() => goto(isIngest ? '/dashboard' : '/rituals')}
 >
-  {#if isIngest()}
+  {#if isIngest}
     ᚠ
   {:else}
     ᚦ
@@ -24,7 +24,7 @@
 </div>
 
 <div class="layout">
-  {#if !hideSidebar()}
+  {#if !hideSidebar}
     <RunicNav />
   {/if}
 
@@ -32,4 +32,3 @@
     <slot />
   </main>
 </div>
-

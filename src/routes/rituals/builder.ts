@@ -1,129 +1,142 @@
-import type { RitualStep } from "./types";
+import { get } from 'svelte/store';
+import { phoenixState } from '$lib/stateStore';
 
-export default function buildFragment(steps: RitualStep[]) {
-  const timestamp = new Date().toISOString();
+type PhoenixTag = {
+  name: string;
+  emoji?: string;
+  archetype?: string;
+  color?: string;
+  category?: string;
+  emotional_weight?: number;
+  description?: string;
+};
 
-  // ⭐ Raw inputs from ALL steps
-  const raw_inputs = steps.map((s) => ({
-    step: s.id,
-    label: s.label,
-    text: s.response?.trim() ?? ""
+type PhoenixStep = {
+  id: string | number;
+  label?: string;
+  prompt?: string;
+  response?: string;
+  tags?: PhoenixTag[];
+  createdTags?: PhoenixTag[];
+  inferredTags?: PhoenixTag[];
+};
+
+export function buildFragment(steps: PhoenixStep[], ritualType: string = "emotion") {
+  // 1. Pull cached Phoenix state (from /state)
+  const state = get(phoenixState);
+  if (!state) {
+    throw new Error("Phoenix state not initialized. Load dashboard first.");
+  }
+
+  const raw = state.raw ?? {};
+  const allTags: PhoenixTag[] = raw.tags ?? [];
+  const anchors = raw.anchors ?? [];
+  const archetypes = raw.archetypes ?? [];
+
+  // 2. Normalize steps
+  const cleanSteps = steps.map((s) => ({
+    id: String(s.id ?? ""),
+    label: String(s.label ?? ""),
+    prompt: String(s.prompt ?? ""),
+    response: String(s.response ?? ""),
+    tags: Array.from(s.tags ?? []),
+    createdTags: Array.from(s.createdTags ?? []),
+    inferredTags: Array.from(s.inferredTags ?? [])
   }));
 
-  // ⭐ Full ritual body (concatenate all responses)
-  const full_body = raw_inputs
-    .map((r) => `${r.label}: ${r.text}`)
-    .join("\n\n");
+  // 3. Infer tags per step using Mongo tag definitions
+  const enrichedSteps = cleanSteps.map((step) => {
+    const text = (step.response || "").toLowerCase();
 
-  // ⭐ Flatten tags
-  const accepted_tags = steps.flatMap((s) => s.tags ?? []);
-  const created_tags = steps.flatMap((s) => s.createdTags ?? []);
-  const inferred_tags = steps.flatMap((s) => s.inferredTags ?? []);
+    const inferred: PhoenixTag[] = [];
 
-  // ⭐ Extract ritual metadata
-  const opening_prompt   = getStep(steps, "opening");
-  const clarification    = getStep(steps, "clarification");
-  const symbolic_image   = getStep(steps, "symbolic_image");
-  const emotional_tone   = getStep(steps, "emotion");
-  const threshold        = getStep(steps, "threshold");
-  const final_fragment   = getStep(steps, "final_fragment");
+    for (const tag of allTags) {
+      const name = tag.name?.toLowerCase() ?? "";
+      const desc = tag.description?.toLowerCase() ?? "";
 
-  // ⭐ Mode inference
-  const mode = inferMode({
-    emotional_tone,
-    threshold,
-    inferred_tags
+      if (!name && !desc) continue;
+
+      if (text.includes(name) || (desc && text.includes(desc))) {
+        inferred.push(structuredClone(tag));
+      }
+    }
+
+    return {
+      ...step,
+      inferredTags: [...step.inferredTags, ...inferred]
+    };
   });
 
-  // ⭐ Symbolic anchor (image > first tag > fallback)
-  const symbolic_anchor =
-    symbolic_image ||
-    accepted_tags[0]?.name ||
-    created_tags[0]?.name ||
-    inferred_tags[0]?.name ||
-    "unresolved-symbol";
-
-  // ⭐ Threshold type
-  const threshold_type = classifyThreshold(threshold);
-
-  // ⭐ Convert accepted tags → Phoenix Tag objects
-  const tag_objects = accepted_tags.map((t) => ({
-    tag_id: t.tag_id ?? null,
-    name: t.name,
-    emoji: t.emoji,
-    color: t.color,
-    archetype: t.archetype,
-    visibility: t.visibility ?? "private",
-    user_id: t.user_id ?? "system"
+  // 4. Build raw_inputs for backend
+  const rawInputs = enrichedSteps.map((s) => ({
+    step: s.id,
+    label: s.label,
+    text: s.response
   }));
 
-  // ⭐ Final Phoenix Ritual Fragment Object (frontend → backend)
-  return {
-    module: "ritual",
-    layer: "fragment",
-    type: "emotional_fragment",
+  // 5. Merge all tag objects (tags + createdTags + inferredTags)
+  const mergedTags: PhoenixTag[] = [];
 
-    title: final_fragment || symbolic_anchor,
-    subject: symbolic_anchor,
+  for (const s of enrichedSteps) {
+    for (const t of s.tags) {
+      mergedTags.push(structuredClone(t));
+    }
+    for (const t of s.createdTags) {
+      mergedTags.push(structuredClone(t));
+    }
+    for (const t of s.inferredTags) {
+      mergedTags.push(structuredClone(t));
+    }
+  }
 
-    raw_text: full_body,
-    body: final_fragment || full_body,
+  // 6. Generate symbolic anchor from text + archetypes + anchors
+  const lastResponse = enrichedSteps[enrichedSteps.length - 1]?.response ?? "";
+  const symbolic_anchor = generateSymbolicAnchor(lastResponse, mergedTags, anchors, archetypes);
 
-    tags: tag_objects,
-
-    source: "frontend",
-    timestamp,
-
-    metadata: {
-      opening_prompt,
-      clarification,
-      symbolic_image,
-      emotional_tone,
-      threshold,
-
-      raw_inputs,
-      accepted_tags,
-      created_tags,
-      inferred_tags,
-
-      symbolic_anchor,
-      threshold_type,
-      emotional_mode: mode
-    },
-
-    extra: {},
-    version: "phoenixos.v1.1"
+  // 7. Final fragment payload (same shape backend expects)
+  const fragment = {
+    ritual_type: ritualType, // now the real classified value, passed in
+    fragment: {
+      metadata: {
+        raw_inputs: rawInputs,
+        symbolic_anchor
+      },
+      tags: mergedTags
+    }
   };
+
+  return structuredClone(fragment);
 }
 
-// ⭐ Helper: get response for a step
-function getStep(steps: RitualStep[], id: string): string {
-  return steps.find((s) => s.id === id)?.response?.trim() ?? "";
+// Simple anchor generator using tags + anchors + text
+function generateSymbolicAnchor(
+  text: string,
+  tags: PhoenixTag[],
+  anchors: any[],
+  archetypes: any[]
+): string {
+  const t = text.toLowerCase().trim();
+
+  const mythic = tags.find((tag) => tag.archetype);
+  if (mythic) {
+    return mythic.name || mythic.archetype || "Juniper green";
+  }
+
+  if (Array.isArray(anchors)) {
+    const match = anchors.find((a: any) => {
+      const key = (a.keyword || a.name || "").toLowerCase();
+      return key && t.includes(key);
+    });
+    if (match) return match.name || match.label || "Juniper green";
+  }
+
+  if (!t) return "Quiet Dawn";
+  if (t.includes("calm") || t.includes("peace") || t.includes("rest")) return "Soft River Blue";
+  if (t.includes("fear") || t.includes("worry") || t.includes("anxious")) return "Ashen Grey";
+  if (t.includes("anger") || t.includes("rage") || t.includes("frustration")) return "Molten Ember";
+  if (t.includes("hope") || t.includes("light") || t.includes("future")) return "Aurora Gold";
+
+  return "Juniper green";
 }
 
-// ⭐ Threshold classifier
-function classifyThreshold(threshold: string) {
-  const t = threshold.toLowerCase();
-  if (t.includes("end") || t.includes("leave")) return "release";
-  if (t.includes("begin") || t.includes("start")) return "initiation";
-  if (t.includes("cross") || t.includes("boundary")) return "threshold";
-  return "transition";
-}
-
-// ⭐ Emotional mode inference
-function inferMode({ emotional_tone, threshold, inferred_tags }) {
-  const tone = emotional_tone.toLowerCase();
-
-  if (tone.includes("grief") || tone.includes("loss")) return "grief";
-  if (tone.includes("fear") || tone.includes("anxiety")) return "threshold";
-  if (tone.includes("awe") || tone.includes("wonder")) return "frisson";
-
-  if (inferred_tags.some((t) => t.type === "grief")) return "grief";
-  if (inferred_tags.some((t) => t.type === "threshold")) return "threshold";
-  if (inferred_tags.some((t) => t.type === "frisson")) return "frisson";
-
-  if (threshold.toLowerCase().includes("crossing")) return "threshold";
-
-  return "neutral";
-}
-
+export default buildFragment;

@@ -1,6 +1,10 @@
 <script>
+    import { phoenixState } from '$lib/stateStore';   // NEW line
+
     const { data } = $props();
     const { state } = data;
+
+    phoenixState.set(state);
 
     const raw = state?.raw ?? {};
     const analysis = state?.analysis ?? {};

@@ -1,8 +1,7 @@
 <script>
-  import ArchetypePanel from "$lib/components/analysis/ArchetypePanel.svelte";
+  import EmotionFrequencyPanel from "$lib/components/analysis/EmotionFrequencyPanel.svelte";
   const { data } = $props();
   const engine = data?.engine ?? {};
 </script>
 
-<ArchetypePanel engine={engine} />
-
+<EmotionFrequencyPanel {engine} />

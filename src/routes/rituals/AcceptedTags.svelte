@@ -1,38 +1,79 @@
 <script lang="ts">
-  // Svelte 5 props
   const { tags } = $props();
+
+  // ⭐ Proxy‑safe unwrap
+  const safeTags = $derived(() => {
+    if (!tags) return [];
+    try {
+      return Array.from(tags);
+    } catch {
+      return [];
+    }
+  });
 </script>
 
 <div class="accepted-container">
-  {#each tags as tag (tag.id)}
-    <span class="chip">{tag.name}</span>
+  {#each safeTags as tag (tag.id)}
+    <span class="rune-chip">
+      {String(tag.name)}
+    </span>
   {/each}
 </div>
 
 <style>
   .accepted-container {
-    margin-top: 1rem;
+    margin-top: 1.4rem;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.7rem;
     justify-content: center;
-  }
-
-  .chip {
-    background: rgba(127, 255, 212, 0.15);
-    border: 1px solid rgba(127, 255, 212, 0.35);
-    padding: 0.35rem 0.9rem;
-    border-radius: 12px;
-    font-size: 0.9rem;
-    color: #e8fdf6;
+    padding: 0.6rem;
+    border-top: 1px solid rgba(255, 140, 66, 0.25);
+    border-bottom: 1px solid rgba(255, 140, 66, 0.25);
     backdrop-filter: blur(4px);
-    transition: all 0.2s ease;
-    cursor: default;
   }
 
-  .chip:hover {
-    background: rgba(127, 255, 212, 0.25);
-    transform: translateY(-1px);
+  .rune-chip {
+    padding: 0.45rem 1rem;
+    font-size: 0.95rem;
+    color: #fbeee2;
+    background: rgba(20, 10, 6, 0.55);
+    border: 1px solid rgba(255, 140, 66, 0.35);
+    border-radius: 14px;
+    box-shadow:
+      inset 0 0 10px rgba(255, 140, 66, 0.25),
+      0 0 10px rgba(255, 140, 66, 0.35);
+    animation:
+      runePulse 3.2s ease-in-out infinite alternate,
+      emberShimmer 6s ease-in-out infinite;
+    backdrop-filter: blur(3px);
+    transition: all 0.25s ease;
+  }
+
+  .rune-chip:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow:
+      inset 0 0 14px rgba(255, 140, 66, 0.35),
+      0 0 14px rgba(255, 140, 66, 0.55);
+  }
+
+  @keyframes runePulse {
+    from {
+      box-shadow:
+        inset 0 0 8px rgba(255, 140, 66, 0.25),
+        0 0 8px rgba(255, 140, 66, 0.25);
+    }
+    to {
+      box-shadow:
+        inset 0 0 14px rgba(255, 140, 66, 0.35),
+        0 0 14px rgba(255, 140, 66, 0.45);
+    }
+  }
+
+  @keyframes emberShimmer {
+    0%   { opacity: 0.92; }
+    50%  { opacity: 1; }
+    100% { opacity: 0.92; }
   }
 </style>
 

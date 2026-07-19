@@ -3,7 +3,7 @@
     { rune: "ᚠ", label: "Rituals", href: "/rituals", element: "fire" },
     { rune: "ᚱ", label: "Fragments", href: "/dashboard/fragments", element: "wind" },
     { rune: "ᚨ", label: "Analysis", href: "/dashboard/analysis", element: "lightning" },
-    { rune: "ᚾ", label: "Emotional", href: "/dashboard/emotional", element: "ember" },
+
     { rune: "ᛟ", label: "Symbolic", href: "/dashboard/symbolic", element: "ice" },
     { rune: "ᛞ", label: "System", href: "/dashboard/system", element: "sun" }
   ];

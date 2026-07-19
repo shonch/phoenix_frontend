@@ -1,150 +1,214 @@
-<script>
-    const { data } = $props();
+<script lang="ts">
+  import { goto } from "$app/navigation";
 
-    const summary = data?.summary ?? null;
-    const clues = data?.clues ?? [];
-    const cycles = data?.cycles ?? [];
-    const dominant = data?.dominant_emotions ?? [];
-    const weather = data?.weather_patterns ?? [];
+  const { data } = $props();
+
+  const dominantEmotions = data?.dominant_emotions ?? [];
+  const tagFrequency = data?.tag_frequency ?? [];
+
+  let expandedEmotion = $state<string | null>(null);
+  let expandedTag = $state<string | null>(null);
+
+  function toggleEmotion(emotion: string) {
+    expandedEmotion = expandedEmotion === emotion ? null : emotion;
+  }
+
+  function toggleTag(tag: string) {
+    expandedTag = expandedTag === tag ? null : tag;
+  }
+
+  function openFragment(id: string) {
+    goto(`/dashboard/fragments/${id}`);
+  }
+
+  function formatDate(iso: string | null) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? "" : d.toLocaleDateString();
+  }
 </script>
 
-<div class="emotion-container">
-    <section class="header">
-        <h1>💫 Emotion Engine</h1>
-        <p class="subtitle">Dominant tones, cycles, and emotional weather.</p>
-    </section>
+<div class="frequency-panel">
+  <header class="header">
+    <h1>💫 Emotion Engine</h1>
+    <p class="subtitle">How often each feeling and tag has risen in your fragments.</p>
+  </header>
 
-    <section class="panel">
-        <h2>Summary</h2>
-        {#if !summary}
-            <p>No summary available.</p>
-        {:else}
-            <p>{summary}</p>
-        {/if}
-    </section>
+  <section>
+    <h2 class="section-title">🔥 Emotional Embers</h2>
 
-    <section class="panel">
-        <h2>Dominant Emotions</h2>
-        {#if !dominant || dominant.length === 0}
-            <p>No dominant emotions detected.</p>
-        {:else}
-            <ul class="dominant-list">
-                {#each dominant as d}
-                    <li class="dominant">
-                        <strong>{d.emotion}</strong>
-                        {#if d.count}
-                            <span> — {d.count}</span>
-                        {/if}
-                    </li>
+    {#if dominantEmotions.length === 0}
+      <p class="empty">No emotional embers have risen yet.</p>
+    {:else}
+      <div class="entries">
+        {#each dominantEmotions as e}
+          <div class="entry">
+            <button class="entry-header" onclick={() => toggleEmotion(e.emotion)}>
+              <span class="ember-word">{e.emotion}</span>
+              <span class="count">{e.count} {e.count === 1 ? "ember" : "embers"} risen</span>
+            </button>
+
+            {#if expandedEmotion === e.emotion}
+              <div class="fragment-list">
+                {#each e.fragments as f}
+                  <button class="fragment-item" onclick={() => openFragment(f.id)}>
+                    <span class="frag-date">{formatDate(f.date)}</span>
+                    <span class="frag-snippet">{f.snippet}</span>
+                  </button>
                 {/each}
-            </ul>
-        {/if}
-    </section>
+              </div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </section>
 
-    <section class="panel">
-        <h2>Emotional Cycles</h2>
-        {#if !cycles || cycles.length === 0}
-            <p>No emotional cycles logged.</p>
-        {:else}
-            <ul class="cycle-list">
-                {#each cycles as c}
-                    <li class="cycle">
-                        <strong>{c.day}</strong>
-                        {#if c.count}
-                            <span> — {c.count} events</span>
-                        {/if}
-                    </li>
+  <section>
+    <h2 class="section-title">🏷️ Tag Echoes</h2>
+    <p class="section-note">
+      Some of these are still rough — that's expected while the tag vocabulary
+      is refined.
+    </p>
+
+    {#if tagFrequency.length === 0}
+      <p class="empty">No tag echoes yet.</p>
+    {:else}
+      <div class="entries">
+        {#each tagFrequency as t}
+          <div class="entry">
+            <button class="entry-header" onclick={() => toggleTag(t.tag)}>
+              <span class="ember-word">{t.tag}</span>
+              <span class="count">{t.count} {t.count === 1 ? "echo" : "echoes"}</span>
+            </button>
+
+            {#if expandedTag === t.tag}
+              <div class="fragment-list">
+                {#each t.fragments as f}
+                  <button class="fragment-item" onclick={() => openFragment(f.id)}>
+                    <span class="frag-date">{formatDate(f.date)}</span>
+                    <span class="frag-snippet">{f.snippet}</span>
+                  </button>
                 {/each}
-            </ul>
-        {/if}
-    </section>
-
-    <section class="panel">
-        <h2>Clues</h2>
-        {#if !clues || clues.length === 0}
-            <p>No emotional clues logged.</p>
-        {:else}
-            <ul class="clue-list">
-                {#each clues as cl}
-                    <li class="clue">
-                        <pre>{cl}</pre>
-                    </li>
-                {/each}
-            </ul>
-        {/if}
-    </section>
-
-    <section class="panel">
-        <h2>Emotional Weather</h2>
-        {#if !weather || weather.length === 0}
-            <p>No emotional weather patterns detected.</p>
-        {:else}
-            <ul class="weather-list">
-                {#each weather as w}
-                    <li class="weather">
-                        <pre>{JSON.stringify(w, null, 2)}</pre>
-                    </li>
-                {/each}
-            </ul>
-        {/if}
-    </section>
-
-    <details class="raw">
-        <summary>Raw JSON</summary>
-        <pre>{JSON.stringify(data, null, 2)}</pre>
-    </details>
+              </div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </section>
 </div>
 
 <style>
-    .emotion-container {
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
-        padding: 1rem;
-        color: #f0e6ff;
-    }
+  .frequency-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    padding: 1rem;
+    color: #f0e6ff;
+  }
 
-    .header h1 {
-        margin: 0;
-        color: #c9a6ff;
-    }
+  .header h1 {
+    margin: 0;
+    color: #c9a6ff;
+  }
 
-    .subtitle {
-        opacity: 0.8;
-        margin-top: 0.25rem;
-    }
+  .subtitle {
+    opacity: 0.8;
+    margin-top: 0.25rem;
+  }
 
-    .panel {
-        background: rgba(50, 20, 80, 0.4);
-        padding: 1.25rem;
-        border-radius: 8px;
-        border: 1px solid rgba(210, 170, 255, 0.3);
-    }
+  .section-title {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.3rem;
+  }
 
-    ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
+  .section-note {
+    margin: 0 0 1rem 0;
+    opacity: 0.7;
+    font-size: 0.9rem;
+  }
 
-    .dominant, .cycle, .clue, .weather {
-        padding: 0.75rem;
-        margin-bottom: 0.75rem;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 6px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
+  .empty {
+    opacity: 0.6;
+    font-style: italic;
+  }
 
-    .clue pre, .weather pre {
-        margin: 0;
-        white-space: pre-wrap;
-    }
+  .entries {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
 
-    .raw pre {
-        background: rgba(0, 0, 0, 0.4);
-        padding: 1rem;
-        border-radius: 6px;
-        overflow: auto;
-    }
+  .entry {
+    border: 1px solid rgba(201, 166, 255, 0.25);
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(201, 166, 255, 0.05);
+  }
+
+  .entry-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1rem;
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 1rem;
+    text-align: left;
+  }
+
+  .entry-header:hover {
+    background: rgba(201, 166, 255, 0.12);
+  }
+
+  .ember-word {
+    text-transform: capitalize;
+    font-weight: 600;
+  }
+
+  .count {
+    opacity: 0.75;
+    font-size: 0.85rem;
+  }
+
+  .fragment-list {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid rgba(201, 166, 255, 0.18);
+  }
+
+  .fragment-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.7rem 1rem;
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(201, 166, 255, 0.1);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .fragment-item:last-child {
+    border-bottom: none;
+  }
+
+  .fragment-item:hover {
+    background: rgba(201, 166, 255, 0.1);
+  }
+
+  .frag-date {
+    font-size: 0.75rem;
+    opacity: 0.6;
+  }
+
+  .frag-snippet {
+    font-size: 0.9rem;
+    opacity: 0.9;
+  }
 </style>
-
