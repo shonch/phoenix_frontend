@@ -1,7 +1,6 @@
 <script lang="ts">
   const { text } = $props();
 
-  // Make it a plain string, not a signal/function
   const safeText = $derived(String(text ?? ""));
 
   let anim = $state("idle");
@@ -16,11 +15,13 @@
 
 <div class={`stone-text ${anim}`}>
   {#if safeText}
-    {#each safeText.split("") as char, i}
-      <span class="glyph" style={`--i:${i};`}>
-        {char === " " ? "\u00A0" : char}
-      </span>
-    {/each}
+    {#key safeText}
+      {#each safeText.split("") as char, i}
+        <span class="glyph" style={`--i:${i};`}>
+          {char === " " ? "\u00A0" : char}
+        </span>
+      {/each}
+    {/key}
   {/if}
 </div>
 
@@ -54,8 +55,24 @@
 
   .glyph {
     display: inline-block;
-    animation: emberGlow 2.4s ease-in-out infinite alternate;
-    animation-delay: calc(var(--i) * 12ms);
+    opacity: 0;
+    animation:
+      writeIn 0.4s ease-out forwards,
+      emberGlow 2.4s ease-in-out infinite alternate;
+    animation-delay: calc(var(--i) * 45ms), calc(var(--i) * 45ms + 0.4s);
+  }
+
+  @keyframes writeIn {
+    from {
+      opacity: 0;
+      filter: blur(3px);
+      transform: translateY(3px);
+    }
+    to {
+      opacity: 0.92;
+      filter: blur(0);
+      transform: translateY(0);
+    }
   }
 
   @keyframes emberGlow {
@@ -69,4 +86,3 @@
     }
   }
 </style>
-

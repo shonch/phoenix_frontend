@@ -5,7 +5,8 @@
     { rune: "ᚨ", label: "Analysis", href: "/dashboard/analysis", element: "lightning" },
 
     { rune: "ᛟ", label: "Symbolic", href: "/dashboard/symbolic", element: "ice" },
-    { rune: "ᛞ", label: "System", href: "/dashboard/system", element: "sun" }
+    { rune: "ᛞ", label: "System", href: "/dashboard/system", element: "sun" },
+    { rune: "ᚱᛟ", label: "Raw Data", href: "/dashboard/raw", element: "sun" },
   ];
 </script>
 

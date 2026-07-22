@@ -1,11 +1,16 @@
+import { get } from 'svelte/store';
+import { authStore } from './authStore';
+
 export async function getPhoenixState(fetch = window.fetch) {
-    // Always use backend-issued token
-    const tokenRes = await fetch("http://127.0.0.1:8000/phoenix/token");
-    const { token } = await tokenRes.json();
+    const auth = get(authStore);
+
+    if (!auth.token) {
+        throw new Error("Not logged in — no auth token available.");
+    }
 
     const res = await fetch("http://127.0.0.1:8000/phoenix/state/", {
         headers: {
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${auth.token}`
         }
     });
 
@@ -15,4 +20,3 @@ export async function getPhoenixState(fetch = window.fetch) {
 
     return await res.json();
 }
-

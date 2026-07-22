@@ -32,15 +32,16 @@ let rejectedTagIds = {}; // { [stepId]: Set of tag_id }
 
 
 
+import { authStore } from '$lib/authStore';
+import { get } from 'svelte/store';
+
+onMount(() => {
+    const auth = get(authStore);
+    token = auth.token ?? "";
+    console.log("TOKEN LOADED FROM AUTH STORE:", token);
+});
 
 
-
-  onMount(async () => {
-    const res = await fetch("http://127.0.0.1:8000/phoenix/token");
-    const data = await res.json();
-    token = data.token;
-    console.log("TOKEN LOADED:", token);
-  });
 
   // ⭐ FIXED: steps must start as an empty $state array
   let steps = $state([]);
@@ -259,6 +260,7 @@ let rejectedTagIds = {}; // { [stepId]: Set of tag_id }
         onCreatedTags={handleCreatedTags}
         onAcceptTag={handleAcceptTag}
 	onRejectTag={handleRejectTag}
+	token={token}
       />
     </div>
 

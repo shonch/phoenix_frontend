@@ -7,12 +7,22 @@
     oncancel
   } = $props();
 
-  // Local editable state
   let name = $state(tag.name ?? "");
   let emoji = $state(tag.emoji ?? "🏷️");
   let color = $state(tag.color ?? "#7fffd4");
   let archetype = $state(tag.archetype ?? "");
   let visibility = $state(tag.visibility ?? "private");
+  let emotionalWeight = $state(tag.emotional_weight ?? 0.5);
+
+  const colorSwatches = [
+    "#7fffd4", "#ff8c42", "#a0eaff", "#c9a6ff",
+    "#ffcf70", "#8ab4ff", "#ff6a6a", "#99ff99"
+  ];
+
+  const emojiSwatches = [
+    "🌀", "🏷️", "🔥", "🌊", "🪞", "🌙", "⚡", "🕵️",
+    "🎯", "🗝️", "⭐", "🌑", "🌿", "💠", "🩸", "🦅"
+  ];
 
   function save() {
     const updated = {
@@ -21,7 +31,8 @@
       emoji,
       color,
       archetype,
-      visibility
+      visibility,
+      emotional_weight: emotionalWeight
     };
 
     onsave?.(updated);
@@ -45,18 +56,60 @@
   </div>
 
   <div class="field">
-    <label>Emoji</label>
-    <input value={emoji} oninput={(e) => emoji = e.target.value} />
+    <label>
+      Emoji
+      <span class="hint">(Mac: ⌘ Ctrl Space, then search)</span>
+    </label>
+    <div class="emoji-swatches">
+      {#each emojiSwatches as e}
+        <button
+          class="emoji-swatch"
+          class:selected={emoji === e}
+          onclick={() => emoji = e}
+        >{e}</button>
+      {/each}
+    </div>
+    <input value={emoji} oninput={(e) => emoji = e.target.value} placeholder="or type your own" />
   </div>
 
   <div class="field">
     <label>Color</label>
-    <input type="color" value={color} oninput={(e) => color = e.target.value} />
+    <div class="color-swatches">
+      {#each colorSwatches as swatch}
+        <button
+          class="swatch"
+          class:selected={color === swatch}
+          style={`background:${swatch}`}
+          onclick={() => color = swatch}
+        ></button>
+      {/each}
+    </div>
   </div>
 
   <div class="field">
-    <label>Archetype</label>
-    <input value={archetype} oninput={(e) => archetype = e.target.value} />
+    <label>What role does this feeling play?</label>
+    <input
+      value={archetype}
+      oninput={(e) => archetype = e.target.value}
+      placeholder="e.g. guardian, wanderer, mourner, spark..."
+    />
+    <span class="hint">Leave blank if nothing comes to mind — you can add it later.</span>
+  </div>
+
+  <div class="field">
+    <label>Weight — Feather to Stone</label>
+    <div class="weight-slider">
+      <span class="weight-icon">🪶</span>
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={emotionalWeight}
+        oninput={(e) => emotionalWeight = parseFloat(e.target.value)}
+      />
+      <span class="weight-icon">🪨</span>
+    </div>
   </div>
 
   <div class="field">
@@ -103,6 +156,15 @@
   label {
     font-size: 0.85rem;
     opacity: 0.8;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .hint {
+    font-size: 0.75rem;
+    opacity: 0.55;
+    font-style: italic;
   }
 
   input, select {
@@ -113,6 +175,56 @@
     color: #e8fdf6;
     font-size: 1rem;
     backdrop-filter: blur(4px);
+  }
+
+  .color-swatches,
+  .emoji-swatches {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+  }
+
+  .swatch.selected {
+    border-color: #fff;
+  }
+
+  .emoji-swatch {
+    width: 34px;
+    height: 34px;
+    font-size: 1.2rem;
+    border-radius: 8px;
+    border: 1px solid rgba(127, 255, 212, 0.2);
+    background: rgba(127, 255, 212, 0.08);
+    cursor: pointer;
+  }
+
+  .emoji-swatch.selected {
+    border-color: #7fffd4;
+    background: rgba(127, 255, 212, 0.25);
+  }
+
+  .weight-slider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .weight-slider input[type="range"] {
+    flex: 1;
+    accent-color: #7fffd4;
+  }
+
+  .weight-icon {
+    font-size: 1.3rem;
+    opacity: 0.85;
   }
 
   .actions {
@@ -139,4 +251,3 @@
     background: rgba(255, 127, 127, 0.25);
   }
 </style>
-

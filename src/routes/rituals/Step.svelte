@@ -12,7 +12,8 @@
     onResponseChange,
     onCreatedTags,
     onAcceptTag,
-    onRejectTag
+    onRejectTag,
+    token
   } = $props();
 
   // ⭐ Recompute whenever index or steps changes
@@ -75,6 +76,7 @@
     selected={safeStep.createdTags}
     onselect={handleAcceptTag}
     oncreate={handleCreatedTags}
+    token={token}
   />
 </div>
 

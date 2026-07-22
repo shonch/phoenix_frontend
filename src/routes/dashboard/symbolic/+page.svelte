@@ -1,4 +1,6 @@
 <script>
+    import { goto } from "$app/navigation";
+
     const { data } = $props();
 
     const symbolic = $derived(data?.symbolic ?? {});
@@ -6,6 +8,10 @@
     const tagFrequency = $derived(symbolic.tag_frequency ?? []);
     const archetypes = $derived(symbolic.archetypes ?? []);
     const constellations = $derived(symbolic.co_occurrence ?? []);
+
+    function openTag(tagName) {
+        goto(`/dashboard/symbolic/${encodeURIComponent(tagName)}`);
+    }
 </script>
 
 <div class="mythic-container">
@@ -23,7 +29,7 @@
             </thead>
             <tbody>
                 {#each tagFrequency as t}
-                    <tr>
+                    <tr class="clickable-row" onclick={() => openTag(t.tag)}>
                         <td class="floaty">{t.tag}</td>
                         <td>{t.count}</td>
                     </tr>
@@ -90,7 +96,6 @@
         overflow: hidden;
     }
 
-    /* --- STRONGER MIST LAYER --- */
     .mythic-container::before {
         content: "";
         position: absolute;
@@ -117,7 +122,6 @@
         100% { transform: translate(0px, 0px) scale(1); }
     }
 
-    /* --- TITLE --- */
     .mythic-title {
         font-size: 2.4rem;
         letter-spacing: 2px;
@@ -136,7 +140,6 @@
         100% { transform: translateY(0px); }
     }
 
-    /* --- PANELS --- */
     .panel {
         margin-bottom: 2rem;
         padding: 1rem;
@@ -148,7 +151,6 @@
         z-index: 1;
     }
 
-    /* --- TABLES --- */
     table {
         width: 100%;
         border-collapse: collapse;
@@ -166,7 +168,15 @@
         color: #eaf3ff;
     }
 
-    /* --- FLOATING TEXT --- */
+    .clickable-row {
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+
+    .clickable-row:hover {
+        background: rgba(255, 255, 255, 0.06);
+    }
+
     .floaty {
         position: relative;
         animation: float 5s ease-in-out infinite;
@@ -178,7 +188,6 @@
         100% { transform: translateY(0px); opacity: 0.95; }
     }
 
-    /* --- RUNIC DIVIDERS --- */
     .rune-divider {
         margin: 2.5rem 0 1.5rem 0;
         text-align: center;

@@ -1,15 +1,16 @@
 <script lang="ts">
   import TagChip from "./TagChip.svelte";
+  import TagEditor from "./TagEditor.svelte";
+  import { createPhoenixTag } from "../../../routes/rituals/TagFactory";
 
-  // Props from parent
   const {
     selected = [],
     onselect,
     oncreate,
-    placeholder = "Add a tag..."
+    placeholder = "Add a tag...",
+    token = ""
   } = $props();
 
-  // ⭐ Proxy‑safe unwrap for selected tags
   const safeSelected = $derived(() => {
     if (!selected) return [];
     try {
@@ -22,8 +23,8 @@
   let query = $state("");
   let suggestions = $state([]);
   let loading = $state(false);
+  let editingTag = $state(null);
 
-  // ⭐ Proxy‑safe unwrap for suggestions
   const safeSuggestions = $derived(() => {
     if (!suggestions) return [];
     try {
@@ -33,7 +34,6 @@
     }
   });
 
-  // ⭐ Fetch suggestions from backend
   async function fetchSuggestions(text: string) {
     if (!text.trim()) {
       suggestions = [];
@@ -45,8 +45,6 @@
     try {
       const res = await fetch(`/api/tags/suggest?query=${encodeURIComponent(text)}`);
       const data = await res.json();
-
-      // ⭐ Ensure suggestions is a real array
       suggestions = Array.isArray(data.tags) ? data.tags : [];
     } catch (err) {
       console.error("Tag suggestion error:", err);
@@ -56,71 +54,97 @@
     loading = false;
   }
 
-  // ⭐ Handle input typing
   function onInput(e: Event) {
     const target = e.target as HTMLInputElement;
     query = target.value;
     fetchSuggestions(query);
   }
 
-  // ⭐ Select an existing tag
   function selectTag(tag) {
     onselect?.(tag);
     query = "";
     suggestions = [];
   }
 
-  // ⭐ Create a new tag
-  async function createTag() {
+  // ⭐ Instead of creating the tag immediately, open the editor
+  // with a properly-shaped blank tag for the user to refine.
+  function startCreateTag() {
     if (!query.trim()) return;
 
-    const newTag = {
-      tag_id: null,
-      name: query.trim(),
-      emoji: "🏷️",
-      color: "#7fffd4",
-      archetype: null,
-      visibility: "private",
-      user_id: "shon"
-    };
+    editingTag = createPhoenixTag({
+      name: query.trim()
+    });
 
-    oncreate?.(newTag);
-
-    query = "";
     suggestions = [];
+  }
+
+  async function handleEditorSave(updatedTag: any) {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/tags/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(updatedTag)
+      });
+
+      if (!res.ok) {
+        console.error("Tag create failed:", await res.text());
+        return;
+      }
+
+      const savedTag = await res.json();
+      oncreate?.(savedTag);
+    } catch (err) {
+      console.error("Tag create error:", err);
+    } finally {
+      editingTag = null;
+      query = "";
+    }
+  }
+
+  function handleEditorCancel() {
+    editingTag = null;
   }
 </script>
 
 <div class="selector">
-  <!-- Selected tags -->
   <div class="selected">
     {#each safeSelected as tag (tag.tag_id ?? tag.name)}
       <TagChip tag={tag} />
     {/each}
   </div>
 
-  <!-- Input -->
-  <input
-    class="input"
-    value={query}
-    placeholder={placeholder}
-    oninput={onInput}
-  />
+  {#if editingTag}
+    <TagEditor
+      tag={editingTag}
+      onsave={handleEditorSave}
+      oncancel={handleEditorCancel}
+    />
+  {:else}
+    <input
+      class="input"
+      value={query}
+      placeholder={placeholder}
+      oninput={onInput}
+    />
 
-  <!-- Suggestions -->
-  {#if safeSuggestions.length > 0}
-    <div class="suggestions">
-      {#each safeSuggestions as tag (tag.tag_id ?? tag.name)}
-        <div class="suggestion" onclick={() => selectTag(tag)}>
-          {String(tag.emoji ?? "🏷️")} {String(tag.name)}
-        </div>
-      {/each}
+    {#if safeSuggestions.length > 0 || query.trim()}
+      <div class="suggestions">
+        {#each safeSuggestions as tag (tag.tag_id ?? tag.name)}
+          <div class="suggestion" onclick={() => selectTag(tag)}>
+            {String(tag.emoji ?? "🏷️")} {String(tag.name)}
+          </div>
+        {/each}
 
-      <!-- Create new tag option -->
-      <div class="suggestion create" onclick={createTag}>
-        ➕ Create “{query}”
+        {#if query.trim()}
+          <div class="suggestion create" onclick={startCreateTag}>
+            ➕ Create "{query}"
+          </div>
+        {/if}
       </div>
-    </div>
+    {/if}
   {/if}
 </div>
 
@@ -176,4 +200,3 @@
     font-style: italic;
   }
 </style>
-
