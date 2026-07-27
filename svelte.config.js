@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-auto';
+import adapter from '@sveltejs/adapter-netlify';
 
 const config = {
     compilerOptions: {
@@ -11,4 +11,3 @@ const config = {
 };
 
 export default config;
-
