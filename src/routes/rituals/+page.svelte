@@ -281,7 +281,7 @@ onMount(() => {
     <div class="closing">
       <PhoenixInscription
         text={closingLine}
-        letterDelay={120}
+        letterDelay={35}
         glowColor="#ff8c42"
       />
 

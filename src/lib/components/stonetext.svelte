@@ -14,16 +14,9 @@
 </script>
 
 <div class={`stone-text ${anim}`}>
-  {#if safeText}
-    {#key safeText}
-      {#each safeText.split("") as char, i}
-        <span class="glyph" style={`--i:${i};`}>
-          {char === " " ? "\u00A0" : char}
-        </span>
-      {/each}
-    {/key}
-  {/if}
+  {#if safeText}{#key safeText}{#each safeText.split(" ") as word, wi}<span class="word">{#each word.split("") as char, i}<span class="glyph" style={`--i:${wi * 8 + i};`}>{char}</span>{/each}</span>{#if wi < safeText.split(" ").length - 1}<span class="glyph space" style={`--i:${wi * 8 + word.length};`}>&nbsp;</span>{/if}{/each}{/key}{/if}
 </div>
+
 
 <style>
   .stone-text {
@@ -51,6 +44,11 @@
         0 0 10px rgba(255, 140, 66, 0.55),
         0 0 18px rgba(255, 140, 66, 0.35);
     }
+  }
+
+  .word {
+    display: inline-block;
+    white-space: nowrap;
   }
 
   .glyph {

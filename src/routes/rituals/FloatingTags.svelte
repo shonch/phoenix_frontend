@@ -25,7 +25,7 @@
       style={`
         --seed:${seeds[i]};
         --x:${(seeds[i] * 60 + 20).toFixed(2)}%;
-        --delay:${(seeds[i] * .4).toFixed(2)}s;
+        --delay:${(seeds[i] * .8).toFixed(2)}s;
       `}
     >
       <span class="tag-label" onclick={() => accept(tag)}>
@@ -65,11 +65,10 @@
     gap: 0.5rem;
 
     animation:
-  emberRise 3s ease-out forwards,
+  emberRise 6s ease-out forwards,
   emberPulse 2.8s ease-in-out infinite alternate;
 
 animation-delay: var(--delay);
-
 
     box-shadow:
       0 0 6px rgba(255, 140, 66, 0.35),
