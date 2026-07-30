@@ -26,7 +26,7 @@ export function createPhoenixTag({
     emoji,
     color,
     archetype,
-    emotional_weight: "neutral",
+    emotional_weight: 0.5,
 
     // System metadata
     source_system: "phoenix",
