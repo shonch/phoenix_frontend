@@ -1,6 +1,4 @@
-import adapter from '@sveltejs/adapter-netlify';
-
-console.log('### PHOENIX CONFIG LOADED — using adapter-netlify directly ###');
+import adapter from '@sveltejs/adapter-vercel';
 
 const config = {
     compilerOptions: {
@@ -8,7 +6,9 @@ const config = {
             (filename.split(/[/\\]/).includes('node_modules') ? undefined : true)
     },
     kit: {
-        adapter: adapter()
+        adapter: adapter({
+            runtime: 'nodejs22.x'
+        })
     }
 };
 
