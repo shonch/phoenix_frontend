@@ -1,5 +1,7 @@
 import adapter from '@sveltejs/adapter-netlify';
 
+console.log('### PHOENIX CONFIG LOADED — using adapter-netlify directly ###');
+
 const config = {
     compilerOptions: {
         runes: ({ filename }) =>
