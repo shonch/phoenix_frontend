@@ -1,3 +1,7 @@
+# _headers is intentionally empty and lives in the project root (not static/) —
+# @sveltejs/adapter-netlify@6.0.4 requires the file here; see its own error message
+# if this file is ever accidentally moved into static/ again.
+
 [build]
   command = "npm run build"
   publish = ".svelte-kit/output/client"
