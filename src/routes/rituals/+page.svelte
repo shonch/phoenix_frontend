@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { PUBLIC_API_URL } from '$env/static/public';
   import PhoenixInscription from "$lib/components/PhoenixInscription.svelte";
   import Step from "./Step.svelte";
   import { ritualSteps } from "./ritualSteps";
@@ -111,8 +112,8 @@ onMount(() => {
 
       console.log("CLASSIFIER PAYLOAD:", payload);
 
-      const res = await fetch("http://127.0.0.1:8000/rituals/classify/", {
-        method: "POST",
+       const res = await fetch(`${PUBLIC_API_URL}/rituals/classify/`, {
+       method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
@@ -217,8 +218,8 @@ onMount(() => {
 
   console.log("FRAGMENT:", fragment);
 
-    const res = await fetch("http://127.0.0.1:8000/rituals/ingest/", {
-      method: "POST",
+    const res = await fetch(`${PUBLIC_API_URL}/rituals/ingest/`, {
+    method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
