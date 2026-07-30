@@ -171,10 +171,14 @@ onMount(() => {
   console.log("UPDATED STEP:", s);
 }
 
-  function handleCreatedTags(tags: any[]) {
-    console.log("CREATED TAGS:", tags);
-    steps[currentStep].createdTags = structuredClone(tags);
+function handleCreatedTags(tag: any) {
+  console.log("CREATED TAG:", tag);
+  const s = steps[currentStep];
+  const cleanTag = structuredClone(tag);
+  if (!s.tags.find((t) => t.tag_id === cleanTag.tag_id)) {
+    s.tags = [...s.tags, cleanTag];
   }
+}
 
   function handleAcceptTag(tag: any) {
     console.log("ACCEPT TAG:", tag);

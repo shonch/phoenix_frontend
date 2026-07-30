@@ -44,7 +44,7 @@
     loading = true;
 
     try {
-      const res = await fetch(`/api/tags/suggest?query=${encodeURIComponent(text)}`);
+      const res = await fetch(`${PUBLIC_API_URL}/api/tags/suggest?query=${encodeURIComponent(text)}`);
       const data = await res.json();
       suggestions = Array.isArray(data.tags) ? data.tags : [];
     } catch (err) {
