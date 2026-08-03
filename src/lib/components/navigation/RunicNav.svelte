@@ -7,6 +7,7 @@
     { rune: "ᛟ", label: "Symbolic", href: "/dashboard/symbolic", element: "ice" },
     { rune: "ᛞ", label: "System", href: "/dashboard/system", element: "sun" },
     { rune: "ᚱᛟ", label: "Raw Data", href: "/dashboard/raw", element: "sun" },
+    { rune: "ᛏ", label: "The Hall", href: "/valhalla", element: "ice" },
   ];
 </script>
 
