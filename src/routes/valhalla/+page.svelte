@@ -8,6 +8,15 @@
   let loading = $state(true);
   let error = $state("");
 
+  const quotes = [
+  "Cattle die, and kinsmen die, and so one dies one's self; but a noble name will never die, if good renown one gets.",
+  "Cattle die, and kinsmen die; one thing now that never dies — the fame of a dead man's deeds.",
+  "Full-stocked folds had the Fatling's sons, who bear now a beggar's staff: brief is wealth, as the winking of an eye, most faithless ever of friends.",
+  "Early must he rise who wants to have another's cattle or life; seldom does a reclining wolf get the meat, nor a sleeping man victory.",
+  "He hath need of his wits who wanders wide; aught simple will serve at home."
+];
+const quote = quotes[Math.floor(Math.random() * quotes.length)];
+
   onMount(async () => {
     const auth = get(authStore);
     try {
@@ -38,7 +47,7 @@
   <div class="rune-ring"></div>
 
   <h1 class="hall-title">The Hall</h1>
-
+  <p class="blessing">— {quote}</p>
   {#if loading}
     <p class="loading">The ledger stirs...</p>
   {:else if error}

@@ -45,9 +45,6 @@ export function createPhoenixTag({
     promotion_status: "candidate",
     last_promoted_at: null,
 
-    // Optional symbolic fields
-    dominatrix_affinity: null,
-    sass_level: null,
 
     // Timestamps
     created_at: now
