@@ -2,6 +2,7 @@
   import TagChip from "./TagChip.svelte";
   import TagEditor from "./TagEditor.svelte";
   import { createPhoenixTag } from "../../../routes/rituals/TagFactory";
+  import { PUBLIC_API_URL } from '$env/static/public';
 
   const {
     selected = [],
@@ -43,7 +44,7 @@
     loading = true;
 
     try {
-      const res = await fetch(`/api/tags/suggest?query=${encodeURIComponent(text)}`);
+      const res = await fetch(`${PUBLIC_API_URL}/api/tags/suggest?query=${encodeURIComponent(text)}`);
       const data = await res.json();
       suggestions = Array.isArray(data.tags) ? data.tags : [];
     } catch (err) {
@@ -80,7 +81,7 @@
 
   async function handleEditorSave(updatedTag: any) {
     try {
-      const res = await fetch("http://127.0.0.1:8000/tags/create", {
+        const res = await fetch(`${PUBLIC_API_URL}/tags/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

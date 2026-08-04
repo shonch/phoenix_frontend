@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { authStore } from "$lib/authStore";
-
+  import { PUBLIC_API_URL } from '$env/static/public';
   let mode = $state<"login" | "register">("login");
   let email = $state("");
   let password = $state("");
@@ -20,8 +20,8 @@
         : { email, password, username };
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000${endpoint}`, {
-        method: "POST",
+      const res = await fetch(`${PUBLIC_API_URL}${endpoint}`, {
+      method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });

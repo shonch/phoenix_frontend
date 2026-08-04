@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { PUBLIC_API_URL } from '$env/static/public';
   import PhoenixInscription from "$lib/components/PhoenixInscription.svelte";
   import Step from "./Step.svelte";
   import { ritualSteps } from "./ritualSteps";
@@ -111,8 +112,8 @@ onMount(() => {
 
       console.log("CLASSIFIER PAYLOAD:", payload);
 
-      const res = await fetch("http://127.0.0.1:8000/rituals/classify/", {
-        method: "POST",
+       const res = await fetch(`${PUBLIC_API_URL}/rituals/classify/`, {
+       method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
@@ -170,10 +171,14 @@ onMount(() => {
   console.log("UPDATED STEP:", s);
 }
 
-  function handleCreatedTags(tags: any[]) {
-    console.log("CREATED TAGS:", tags);
-    steps[currentStep].createdTags = structuredClone(tags);
+function handleCreatedTags(tag: any) {
+  console.log("CREATED TAG:", tag);
+  const s = steps[currentStep];
+  const cleanTag = structuredClone(tag);
+  if (!s.tags.find((t) => t.tag_id === cleanTag.tag_id)) {
+    s.tags = [...s.tags, cleanTag];
   }
+}
 
   function handleAcceptTag(tag: any) {
     console.log("ACCEPT TAG:", tag);
@@ -217,8 +222,8 @@ onMount(() => {
 
   console.log("FRAGMENT:", fragment);
 
-    const res = await fetch("http://127.0.0.1:8000/rituals/ingest/", {
-      method: "POST",
+    const res = await fetch(`${PUBLIC_API_URL}/rituals/ingest/`, {
+    method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
