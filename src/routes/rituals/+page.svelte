@@ -134,13 +134,25 @@ onMount(() => {
       ritualType = String(data.ritual_type);
       console.log("RITUAL TYPE SET:", ritualType);
 
-      const newSteps = ritualPrompts[ritualType].map((s) => ({
-        ...s,
-        response: "",
-        tags: [],
-        createdTags: [],
-        inferredTags: []
-      }));
+     const newSteps = ritualPrompts[ritualType].map((s, i) => {
+  if (i === 0) {
+    return {
+      ...s,
+      response: steps[0].response,
+      tags: steps[0].tags,
+      createdTags: steps[0].createdTags,
+      inferredTags: []
+    };
+  }
+  return {
+    ...s,
+    response: "",
+    tags: [],
+    createdTags: [],
+    inferredTags: []
+  };
+});
+
 
       console.log("NEW STEPS BEFORE ASSIGN:", newSteps);
 
@@ -172,12 +184,17 @@ onMount(() => {
 }
 
 function handleCreatedTags(tag: any) {
-  console.log("CREATED TAG:", tag);
+  console.log("🏷️ CREATED — currentStep:", currentStep, "hasClassified:", hasClassified);
+  console.log("🏷️ CREATED — incoming tag:", tag);
   const s = steps[currentStep];
   const cleanTag = structuredClone(tag);
-  if (!s.tags.find((t) => t.tag_id === cleanTag.tag_id)) {
+  const cleanId = cleanTag.tag_id ?? cleanTag._id;
+  const alreadyThere = s.tags.find((t) => (t.tag_id ?? t._id) === cleanId);
+  console.log("🏷️ CREATED — already attached?", !!alreadyThere, "step.tags before:", $state.snapshot(s.tags));
+  if (!alreadyThere) {
     s.tags = [...s.tags, cleanTag];
   }
+  console.log("🏷️ CREATED — step.tags after:", $state.snapshot(s.tags));
 }
 
   function handleAcceptTag(tag: any) {

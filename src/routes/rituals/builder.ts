@@ -51,15 +51,18 @@ export function buildFragment(steps: PhoenixStep[], ritualType: string = "emotio
     const inferred: PhoenixTag[] = [];
 
     for (const tag of allTags) {
-      const name = tag.name?.toLowerCase() ?? "";
-      const desc = tag.description?.toLowerCase() ?? "";
+  const name = tag.name?.toLowerCase() ?? "";
+  const desc = tag.description?.toLowerCase() ?? "";
+  if (!name && !desc) continue;
 
-      if (!name && !desc) continue;
+  const nameMatch = name && new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(text);
+  const descMatch = desc && new RegExp(`\\b${desc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(text);
 
-      if (text.includes(name) || (desc && text.includes(desc))) {
-        inferred.push(structuredClone(tag));
-      }
-    }
+  if (nameMatch || descMatch) {
+    inferred.push(structuredClone(tag));
+  }
+}
+
 
     return {
       ...step,
@@ -90,8 +93,9 @@ export function buildFragment(steps: PhoenixStep[], ritualType: string = "emotio
   }
 
   // 6. Generate symbolic anchor from text + archetypes + anchors
-  const lastResponse = enrichedSteps[enrichedSteps.length - 1]?.response ?? "";
-  const symbolic_anchor = generateSymbolicAnchor(lastResponse, mergedTags, anchors, archetypes);
+  const allResponses = enrichedSteps.map((s) => s.response).join(" ");
+  const symbolic_anchor = generateSymbolicAnchor(allResponses, mergedTags, anchors, archetypes);
+
 
   // 7. Final fragment payload (same shape backend expects)
   const fragment = {
@@ -109,6 +113,7 @@ export function buildFragment(steps: PhoenixStep[], ritualType: string = "emotio
 }
 
 // Simple anchor generator using tags + anchors + text
+
 function generateSymbolicAnchor(
   text: string,
   tags: PhoenixTag[],
@@ -116,11 +121,6 @@ function generateSymbolicAnchor(
   archetypes: any[]
 ): string {
   const t = text.toLowerCase().trim();
-
-  const mythic = tags.find((tag) => tag.archetype);
-  if (mythic) {
-    return mythic.name || mythic.archetype || "Juniper green";
-  }
 
   if (Array.isArray(anchors)) {
     const match = anchors.find((a: any) => {
@@ -130,13 +130,21 @@ function generateSymbolicAnchor(
     if (match) return match.name || match.label || "Juniper green";
   }
 
-  if (!t) return "Quiet Dawn";
-  if (t.includes("calm") || t.includes("peace") || t.includes("rest")) return "Soft River Blue";
-  if (t.includes("fear") || t.includes("worry") || t.includes("anxious")) return "Ashen Grey";
-  if (t.includes("anger") || t.includes("rage") || t.includes("frustration")) return "Molten Ember";
-  if (t.includes("hope") || t.includes("light") || t.includes("future")) return "Aurora Gold";
+  if (t) {
+    if (t.includes("calm") || t.includes("peace") || t.includes("rest")) return "Soft River Blue";
+    if (t.includes("fear") || t.includes("worry") || t.includes("anxious")) return "Ashen Grey";
+    if (t.includes("anger") || t.includes("rage") || t.includes("frustration")) return "Molten Ember";
+    if (t.includes("hope") || t.includes("light") || t.includes("future")) return "Aurora Gold";
+  }
 
+  const mythic = tags.find((tag) => tag.archetype);
+  if (mythic) {
+    return mythic.name || mythic.archetype || "Juniper green";
+  }
+
+  if (!t) return "Quiet Dawn";
   return "Juniper green";
 }
+
 
 export default buildFragment;
