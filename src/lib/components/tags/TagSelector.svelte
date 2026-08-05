@@ -35,7 +35,7 @@
     }
   });
 
-  async function fetchSuggestions(text: string) {
+   async function fetchSuggestions(text: string) {
     if (!text.trim()) {
       suggestions = [];
       return;
@@ -44,7 +44,9 @@
     loading = true;
 
     try {
-      const res = await fetch(`${PUBLIC_API_URL}/api/tags/suggest?query=${encodeURIComponent(text)}`);
+      const res = await fetch(`${PUBLIC_API_URL}/tags/suggest?query=${encodeURIComponent(text)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const data = await res.json();
       suggestions = Array.isArray(data.tags) ? data.tags : [];
     } catch (err) {
@@ -53,9 +55,9 @@
     }
 
     loading = false;
-  }
+}
 
-  function onInput(e: Event) {
+function onInput(e: Event) {
     const target = e.target as HTMLInputElement;
     query = target.value;
     fetchSuggestions(query);
