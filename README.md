@@ -1,42 +1,32 @@
-# sv
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Phoenix — Frontend
 
-## Creating a project
+SvelteKit frontend for Phoenix, a personal journaling and life-tracking web application.
 
-If you're seeing this, you've probably already done this step. Congrats!
+Live: phoenix-frontend-ashy.vercel.app
 
-```sh
-# create a new project
-npx sv create my-app
-```
+Tech Stack
 
-To recreate this project with the same configuration:
+SvelteKit with TypeScript
+Deployed on Vercel
+Connects to Phoenix backend API (FastAPI + MongoDB)
 
-```sh
-# recreate this project
-npx sv@0.16.1 create --template minimal --types ts --install npm phoenix_frontend
-```
+Features
 
-## Developing
+User authentication (login/registration)
+Ritual/journal entry submission
+Tag creation and suggestion system
+Emotional weight metadata per tag
+Environment-based API configuration via PUBLIC_API_URL
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Related Repo
+Backend: github.com/vikingcoder/phoenix-os
 
-```sh
+Getting Started
+
+npm install
 npm run dev
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+Set PUBLIC_API_URL in .env for local development:
 
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+PUBLIC_API_URL=http://127.0.0.1:8000
