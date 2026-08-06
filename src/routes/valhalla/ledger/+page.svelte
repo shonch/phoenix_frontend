@@ -77,6 +77,7 @@
           <select bind:value={type}>
             <option value="expense">Expense</option>
             <option value="income">Income</option>
+	    <option value="adjustment">Adjustment (opening balance, correction)</option>
           </select>
         </label>
       </div>
