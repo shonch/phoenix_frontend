@@ -7,7 +7,7 @@
     const COLLECTION_LABELS: Record<string, string> = {
         fragments: "Fragments (Legacy)",
         emotional_fragments: "Emotional Fragments",
-        clues: "Detective Clues",
+
         thresholds: "Thresholds",
         revelations: "Revelations"
     };
