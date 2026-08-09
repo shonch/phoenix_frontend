@@ -157,7 +157,7 @@ onMount(() => {
       console.log("NEW STEPS BEFORE ASSIGN:", newSteps);
 
       steps = newSteps;
-      currentStep = 0;
+
 
       console.log("STEPS REPLACED — now:", steps);
     }
