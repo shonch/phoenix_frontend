@@ -138,9 +138,9 @@ onMount(() => {
   if (i === 0) {
     return {
       ...s,
-      response: $state.snapshot(steps[0]).response,
-      tags: $state.snapshot(steps[0]).tags,
-      createdTags: $state.snapshot(steps[0]).createdTags,
+      response: steps[0].response,
+      tags: steps[0].tags,
+      createdTags: steps[0].createdTags,
       inferredTags: []
     };
   }
@@ -156,7 +156,7 @@ onMount(() => {
 
       console.log("NEW STEPS BEFORE ASSIGN:", newSteps);
 
-      steps = newSteps;
+      steps = structuredClone(newSteps);
       currentStep = 0;
 
       console.log("STEPS REPLACED — now:", steps);

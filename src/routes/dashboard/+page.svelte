@@ -12,15 +12,19 @@
     const fragments = raw.fragments ?? [];
 
     // Last fragment
-    const lastFragment = fragments[fragments.length - 1];
+    const allFragments = [
+        ...(raw.emotional_fragments ?? []),
+        ...(raw.revelations ?? []),
+        ...(raw.thresholds ?? [])
+    ];
 
-    // Tags from last fragment (PhoenixTag[])
+    const lastFragment = allFragments
+        .slice()
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0]
+        ?? null;
+
     const fragmentTags = lastFragment?.tags ?? [];
 
-    // Pick the most mythic tag:
-    // 1. Prefer tags with an archetype
-    // 2. Otherwise use the first tag
-    // 3. Otherwise fallback to Traveler
     const mythicTag =
         fragmentTags.find(t => t.archetype) ??
         fragmentTags[0] ??
@@ -29,6 +33,7 @@
     const archetypeName = mythicTag?.name || "Traveler";
     const emotionLabel = mythicTag?.archetype || "unspoken feeling";
     const trendLabel = analysis?.emotional_trend || "a quiet, shifting current";
+
 </script>
 
 <section class="ritual-hero">

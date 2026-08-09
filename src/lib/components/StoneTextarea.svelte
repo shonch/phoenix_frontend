@@ -3,7 +3,7 @@
 
   let focused = $state(false);
   let anim = $state("idle");
-
+  let textareaEl: HTMLTextAreaElement;
   $effect(() => {
     anim = "entering";
     setTimeout(() => {
@@ -11,6 +11,12 @@
     }, 450);
   });
 
+
+  $effect(() => {
+  if (textareaEl && textareaEl.value !== value) {
+    textareaEl.value = value;
+  }
+});
   function handleInput(e: Event) {
     const v = (e.target as HTMLTextAreaElement).value;
     onInput(v);
@@ -21,6 +27,7 @@
   <textarea
     class="inner"
     rows="6"
+    bind:this={textareaEl}
     value={value}
     oninput={handleInput}
     onfocus={() => (focused = true)}

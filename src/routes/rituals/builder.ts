@@ -118,7 +118,8 @@ function generateSymbolicAnchor(
   text: string,
   tags: PhoenixTag[],
   anchors: any[],
-  archetypes: any[]
+  archetypes: any[],
+  inferredTags: PhoenixTag[] = []
 ): string {
   const t = text.toLowerCase().trim();
 
@@ -137,14 +138,16 @@ function generateSymbolicAnchor(
     if (t.includes("hope") || t.includes("light") || t.includes("future")) return "Aurora Gold";
   }
 
-  const mythic = tags.find((tag) => tag.archetype);
-  if (mythic) {
-    return mythic.name || mythic.archetype || "Juniper green";
+  // Prefer a tag actually inferred from THIS fragment's text over any random
+  // tag with an archetype from the full merged pool (which could come from
+  // an unrelated step or an old tag with no relevance to this content).
+  const relevantMythic = inferredTags.find((tag) => tag.archetype);
+  if (relevantMythic) {
+    return relevantMythic.name || relevantMythic.archetype || "Juniper green";
   }
 
   if (!t) return "Quiet Dawn";
   return "Juniper green";
 }
-
 
 export default buildFragment;
