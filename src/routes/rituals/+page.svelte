@@ -11,7 +11,7 @@
   import { inferTagsFromStep } from "./tagInference";
   import { invalidateAll } from '$app/navigation';
   import { phoenixState } from '$lib/stateStore';
-
+  import { apiFetch } from '$lib/api';
 const availableTags = $derived($phoenixState?.raw?.symbolic_tags ?? []);
 
 
@@ -112,24 +112,20 @@ onMount(() => {
 
       console.log("CLASSIFIER PAYLOAD:", payload);
 
-       const res = await fetch(`${PUBLIC_API_URL}/rituals/classify/`, {
-       method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      console.log("CLASSIFIER STATUS:", res.status);
-
-      if (!res.ok) {
-        console.error("CLASSIFIER ERROR:", await res.text());
+      let data;
+      try {
+        data = await apiFetch(`/rituals/classify/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } catch (err) {
+        console.error("CLASSIFIER ERROR:", err.message);
         return;
       }
 
-      const data = await res.json();
       console.log("CLASSIFIER RESULT:", data);
+
 
       ritualType = String(data.ritual_type);
       console.log("RITUAL TYPE SET:", ritualType);
@@ -198,34 +194,25 @@ function handleCreatedTags(tag: any) {
 }
 
   function handleAcceptTag(tag: any) {
-    console.log("ACCEPT TAG:", tag);
-
-    const s = steps[currentStep];
-    const cleanTag = structuredClone(tag);
-
-    if (!s.tags.find((t) => t.tag_id === cleanTag.tag_id)) {
-      s.tags = [...s.tags, cleanTag];
-    }
-
-    console.log("UPDATED TAGS:", s.tags);
-  }
-
-  function handleRejectTag(tag: any) {
-  console.log("REJECT TAG:", tag);
+  console.log("ACCEPT TAG:", tag);
 
   const s = steps[currentStep];
-  const stepId = s.id;
+  const cleanTag = structuredClone(tag);
 
-  if (!rejectedTagIds[stepId]) {
-    rejectedTagIds[stepId] = new Set();
+  if (!s.tags.find((t) => t.tag_id === cleanTag.tag_id)) {
+    s.tags = [...s.tags, cleanTag];
   }
-  rejectedTagIds[stepId].add(tag.tag_id);
 
-  // remove immediately from the visible suggestions
-  s.inferredTags = s.inferredTags.filter((t) => t.tag_id !== tag.tag_id);
+  // remove from suggestions now that it's been accepted
+  // delay removal from suggestions so the flame animation gets to play first
+    setTimeout(() => {
+      s.inferredTags = s.inferredTags.filter((t) => t.tag_id !== cleanTag.tag_id);
+    }, 550);  
 
-  console.log("REJECTED SO FAR for step", stepId, ":", [...rejectedTagIds[stepId]]);
+  console.log("UPDATED TAGS:", s.tags);
 }
+
+
 
 
   async function offerRitual() {
@@ -239,24 +226,18 @@ function handleCreatedTags(tag: any) {
 
   console.log("FRAGMENT:", fragment);
 
-    const res = await fetch(`${PUBLIC_API_URL}/rituals/ingest/`, {
-    method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(fragment)
-    });
-
-    console.log("INGEST STATUS:", res.status);
-
-    if (!res.ok) {
-      console.error("INGEST ERROR:", await res.text());
+   try {
+      phoenixFragment = await apiFetch(`/rituals/ingest/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fragment)
+      });
+    } catch (err) {
+      console.error("INGEST ERROR:", err.message);
       return;
     }
 
-    phoenixFragment = await res.json();
-    closingLine = generateInscription(fragment);
+   closingLine = generateInscription(fragment);
     stage = "closing";
     await invalidateAll(); // refresh dashboard data now that a real fragment exists
 
@@ -295,7 +276,7 @@ function handleCreatedTags(tag: any) {
         onResponseChange={handleResponseChange}
         onCreatedTags={handleCreatedTags}
         onAcceptTag={handleAcceptTag}
-	onRejectTag={handleRejectTag}
+
 	token={token}
       />
     </div>

@@ -34,12 +34,8 @@
     onResponseChange(String(v));
   }
 
-  function handleAcceptTag(tag: any) {
-    onAcceptTag(structuredClone(tag));
-  }
-
-  function handleRejectTag(tag: any) {
-  onRejectTag($state.snapshot(tag));
+function handleAcceptTag(tag: any) {
+  onAcceptTag(structuredClone($state.snapshot(tag)));
 }
 
   function handleCreatedTags(tags: any[]) {
@@ -61,7 +57,7 @@
     <FloatingTags
       suggestions={safeStep.inferredTags}
       accept={handleAcceptTag}
-      reject={handleRejectTag}
+     
     />
   {/if}
 

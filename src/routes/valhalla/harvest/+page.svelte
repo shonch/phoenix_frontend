@@ -1,7 +1,6 @@
+
 <script lang="ts">
-  import { authStore } from "$lib/authStore";
-  import { get } from "svelte/store";
-  import { PUBLIC_API_URL } from '$env/static/public';
+  import { apiFetch } from "$lib/api";
   import { goto } from "$app/navigation";
 
   let amount = $state("");
@@ -21,15 +20,11 @@
     }
 
     loading = true;
-    const auth = get(authStore);
 
     try {
-      const res = await fetch(`${PUBLIC_API_URL}/valhalla/transactions/`, {
+      await apiFetch("/valhalla/transactions/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.token}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: parseFloat(amount),
           type: "income",
@@ -39,11 +34,6 @@
           description: description || "No description"
         })
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || "The Harvest would not accept this offering.");
-      }
 
       success = true;
       setTimeout(() => goto("/valhalla"), 1200);

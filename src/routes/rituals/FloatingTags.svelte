@@ -1,7 +1,6 @@
 <script lang="ts">
-  const { suggestions, accept, reject } = $props();
+  const { suggestions, accept } = $props();
 
-  // ⭐ Proxy‑safe unwrap
   const safeSuggestions = $derived.by(() => {
     if (!suggestions) return [];
     try {
@@ -11,30 +10,61 @@
     }
   });
 
-  let seeds = $state([]);
+  let seeds = $state(new Map());       // tag_id -> random seed, assigned once
+  let positions = $state(new Map());   // tag_id -> {x, y}, assigned once
+  let caught = $state(new Set());
 
   $effect(() => {
-    seeds = safeSuggestions.map(() => Math.random());
+    // Assign a seed/position only to NEW tags — never touch existing ones
+    for (const tag of safeSuggestions) {
+      if (!seeds.has(tag.tag_id)) {
+        seeds.set(tag.tag_id, Math.random());
+      }
+    }
   });
+
+  function getPosition(tag) {
+    if (positions.has(tag.tag_id)) {
+      return positions.get(tag.tag_id);
+    }
+    // First time seeing this tag — pick a free-ish random spot once, permanently
+    const seed = seeds.get(tag.tag_id) ?? Math.random();
+    const x = seed * 70 + 15;               // 15%–85% horizontal
+    const y = ((seed * 7) % 1) * 70 + 15;    // pseudo-independent vertical spread
+    const pos = { x, y };
+    positions.set(tag.tag_id, pos);
+    return pos;
+  }
+
+  function handleAccept(tag) {
+    if (caught.has(tag.tag_id)) return;
+    caught.add(tag.tag_id);
+    caught = new Set(caught);
+    accept(tag);
+  }
 </script>
 
 <div class="floating-container">
-  {#each safeSuggestions as tag, i (tag.tag_id)}
+  {#each safeSuggestions as tag (tag.tag_id)}
+    {@const pos = getPosition(tag)}
+    {@const seed = seeds.get(tag.tag_id) ?? 0}
     <div
       class="ember-tag"
+      class:caught={caught.has(tag.tag_id)}
       style={`
-        --seed:${seeds[i]};
-        --x:${(seeds[i] * 60 + 20).toFixed(2)}%;
-        --delay:${(seeds[i] * .8).toFixed(2)}s;
+        --x:${pos.x.toFixed(2)}%;
+        --y:${pos.y.toFixed(2)}%;
+        --delay:${(seed * .8).toFixed(2)}s;
       `}
+      onclick={() => handleAccept(tag)}
     >
-      <span class="tag-label" onclick={() => accept(tag)}>
+      <span class="tag-label">
         {String(tag.name ?? tag.tag_name)}
       </span>
-      <span class="tag-reject" onclick={() => reject(tag)}>✕</span>
     </div>
   {/each}
 </div>
+
 
 <style>
   .floating-container {
@@ -49,9 +79,9 @@
   .ember-tag {
     position: absolute;
     left: var(--x);
-    top: 140%;
-    transform: translateX(-50%);
-    padding: 0.35rem 0.5rem 0.35rem 0.9rem;
+    top: var(--y);
+    transform: translate(-50%, -50%);
+    padding: 0.35rem 0.9rem;
     background: rgba(255, 140, 66, 0.18);
     border: 1px solid rgba(255, 140, 66, 0.35);
     border-radius: 14px;
@@ -59,62 +89,42 @@
     font-size: 0.9rem;
     pointer-events: auto;
     backdrop-filter: blur(4px);
-    opacity: 0.9;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    will-change: opacity, filter;
 
-    animation:
-  emberRise 6s ease-out forwards,
-  emberPulse 2.8s ease-in-out infinite alternate;
+    animation: emberPulse 2.8s ease-in-out infinite alternate;
+    animation-delay: var(--delay);
 
-animation-delay: var(--delay);
-
-    box-shadow:
-      0 0 6px rgba(255, 140, 66, 0.35),
-      inset 0 0 6px rgba(255, 140, 66, 0.25);
-
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    filter: drop-shadow(0 0 6px rgba(255, 140, 66, 0.35));
+    transition: background 0.3s ease, border-color 0.3s ease, transform 0.15s ease;
   }
 
-  .tag-label {
-    cursor: pointer;
+  .ember-tag:hover {
+    transform: translate(-50%, -50%) scale(1.04);
   }
 
-  .tag-reject {
-    cursor: pointer;
-    opacity: 0.6;
-    font-size: 0.75rem;
-    padding: 0 0.15rem;
-  }
-
-  .tag-reject:hover {
-    opacity: 1;
-    color: #ff6666;
-  }
-
-  @keyframes emberRise {
-    0% {
-      transform: translateX(-50%) translateY(0);
-      opacity: 0.9;
-    }
-    100% {
-      transform: translateX(calc(-50% + (var(--seed) * 40px - 20px)))
-                 translateY(-260px);
-      opacity: 0.9;
-    }
+  .ember-tag.caught {
+    background: rgba(255, 200, 80, 0.28);
+    border-color: rgba(255, 215, 120, 0.75);
+    cursor: default;
+    animation: emberFlare 0.5s ease-out forwards, emberGlowSteady 2.4s ease-in-out 0.5s infinite alternate;
   }
 
   @keyframes emberPulse {
-    from {
-      box-shadow:
-        0 0 6px rgba(255, 140, 66, 0.25),
-        inset 0 0 6px rgba(255, 140, 66, 0.15);
-    }
-    to {
-      box-shadow:
-        0 0 12px rgba(255, 140, 66, 0.45),
-        inset 0 0 12px rgba(255, 140, 66, 0.25);
-    }
+    from { opacity: 0.85; filter: drop-shadow(0 0 5px rgba(255, 140, 66, 0.3)); }
+    to   { opacity: 1;    filter: drop-shadow(0 0 11px rgba(255, 140, 66, 0.5)); }
+  }
+
+  @keyframes emberFlare {
+    0%   { transform: translate(-50%, -50%) scale(1);    filter: drop-shadow(0 0 6px rgba(255, 200, 80, 0.35)); }
+    40%  { transform: translate(-50%, -50%) scale(1.15); filter: drop-shadow(0 0 20px rgba(255, 215, 120, 0.85)); }
+    100% { transform: translate(-50%, -50%) scale(1);    filter: drop-shadow(0 0 13px rgba(255, 215, 120, 0.55)); }
+  }
+
+  @keyframes emberGlowSteady {
+    from { filter: drop-shadow(0 0 9px rgba(255, 200, 80, 0.35)); }
+    to   { filter: drop-shadow(0 0 15px rgba(255, 215, 120, 0.55)); }
   }
 </style>

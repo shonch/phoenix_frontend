@@ -34,7 +34,7 @@
         return;
       }
 
-      authStore.set({ token: data.token, email: data.email });
+      authStore.set({ token: data.token, refresh_token: data.refresh_token, email: data.email }); 
       goto("/dashboard");
     } catch (err) {
       error = "Could not reach the Archive. Is the backend running?";

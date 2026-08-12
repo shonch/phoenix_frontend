@@ -1,8 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { authStore } from "$lib/authStore";
-  import { get } from "svelte/store";
-  import { PUBLIC_API_URL } from '$env/static/public';
+  import { apiFetch } from "$lib/api";
 
   let bankBalance = $state("");
   let checked = $state(false);
@@ -14,15 +12,9 @@
   let lastReckonedDate = $state(null);
 
   async function loadLastReckoned() {
-    const auth = get(authStore);
     try {
-      const res = await fetch(`${PUBLIC_API_URL}/valhalla/setup/last-reckoned`, {
-        headers: { Authorization: `Bearer ${auth.token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        lastReckonedDate = data.last_reckoned_date;
-      }
+      const data = await apiFetch(`/valhalla/setup/last-reckoned`);
+      lastReckonedDate = data.last_reckoned_date;
     } catch (e) {
       // silent — non-critical
     }
@@ -38,19 +30,12 @@
     }
 
     loading = true;
-    const auth = get(authStore);
 
     try {
-      const balRes = await fetch(`${PUBLIC_API_URL}/valhalla/balances/view`, {
-        headers: { Authorization: `Bearer ${auth.token}` }
-      });
-      const balData = await balRes.json();
+      const balData = await apiFetch(`/valhalla/balances/view`);
       valhallaBalance = balData.balance ?? 0;
 
-      const txRes = await fetch(`${PUBLIC_API_URL}/valhalla/transactions/`, {
-        headers: { Authorization: `Bearer ${auth.token}` }
-      });
-      const txData = await txRes.json();
+      const txData = await apiFetch(`/valhalla/transactions/`);
       transactions = (txData.transactions ?? []).sort((a, b) => b.date.localeCompare(a.date));
 
       checked = true;
@@ -62,12 +47,8 @@
   }
 
   async function markAgreed() {
-    const auth = get(authStore);
     try {
-      await fetch(`${PUBLIC_API_URL}/valhalla/setup/mark-agreed`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${auth.token}` }
-      });
+      await apiFetch(`/valhalla/setup/mark-agreed`, { method: "POST" });
       await loadLastReckoned();
     } catch (e) {
       // silent — non-critical

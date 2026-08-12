@@ -1,7 +1,6 @@
+
 <script lang="ts">
-  import { authStore } from "$lib/authStore";
-  import { get } from "svelte/store";
-  import { PUBLIC_API_URL } from '$env/static/public';
+  import { apiFetch } from "$lib/api";
   import { onMount } from "svelte";
 
   let name = $state("");
@@ -16,18 +15,12 @@
 
   async function loadHoard() {
     dataLoading = true;
-    const auth = get(authStore);
     try {
-      const res = await fetch(`${PUBLIC_API_URL}/valhalla/hoard/view`, {
-        headers: { Authorization: `Bearer ${auth.token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        assets = data.assets ?? [];
-        totalAssets = data.total_assets ?? 0;
-        totalDebt = data.total_debt ?? 0;
-        netWorth = data.net_worth ?? 0;
-      }
+      const data = await apiFetch(`/valhalla/hoard/view`);
+      assets = data.assets ?? [];
+      totalAssets = data.total_assets ?? 0;
+      totalDebt = data.total_debt ?? 0;
+      netWorth = data.net_worth ?? 0;
     } catch (e) {
       // silent — form still usable even if the view fails
     } finally {
@@ -45,25 +38,13 @@
     }
 
     loading = true;
-    const auth = get(authStore);
 
     try {
-      const res = await fetch(`${PUBLIC_API_URL}/valhalla/hoard/create`, {
+      await apiFetch("/valhalla/hoard/create", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.token}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, value: parseFloat(value) })
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        const msg = Array.isArray(data.detail)
-          ? data.detail.map(d => d.msg).join(", ")
-          : data.detail;
-        throw new Error(msg || "The Hoard would not accept this.");
-      }
 
       name = "";
       value = "";

@@ -1,8 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { authStore } from "$lib/authStore";
-  import { get } from "svelte/store";
-  import { PUBLIC_API_URL } from '$env/static/public';
+  import { apiFetch } from "$lib/api";
 
   let transactions = $state([]);
   let fragments = $state([]);
@@ -13,14 +11,9 @@
   async function loadGlen() {
     loading = true;
     error = "";
-    const auth = get(authStore);
 
     try {
-      const res = await fetch(`${PUBLIC_API_URL}/valhalla/glen/?days=${days}`, {
-        headers: { Authorization: `Bearer ${auth.token}` }
-      });
-      if (!res.ok) throw new Error("The Glen could not be reached.");
-      const data = await res.json();
+      const data = await apiFetch(`/valhalla/glen/?days=${days}`);
       transactions = data.transactions ?? [];
       fragments = data.fragments ?? [];
     } catch (e) {
@@ -37,6 +30,7 @@
     return isNaN(dt.getTime()) ? d : dt.toLocaleDateString();
   }
 </script>
+
 
 <div class="glen">
   <div class="haze"></div>
