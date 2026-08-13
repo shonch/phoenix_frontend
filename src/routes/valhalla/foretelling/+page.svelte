@@ -3,17 +3,18 @@
   import { apiFetch } from "$lib/api";
 
   let daily = $state([]);
+  let foretoldTransactions = $state([]);
   let loading = $state(true);
   let error = $state("");
   let expandedDate = $state(null);
   let flashingDate = $state(null);
+  let markingLanded = $state(null);
 
   const now = new Date();
   const monthName = now.toLocaleString('default', { month: 'long' });
   const year = now.getFullYear();
   const todayStr = now.toISOString().slice(0, 10);
 
-  // Build a lookup by date string for quick access
   const byDate = $derived.by(() => {
     const map = new Map();
     for (const d of daily) {
@@ -22,16 +23,15 @@
     return map;
   });
 
-  // Build the calendar grid: leading blanks + all days of the month
   const calendarCells = $derived.by(() => {
     if (daily.length === 0) return [];
 
     const firstDay = new Date(daily[0].date);
-    const startWeekday = firstDay.getDay(); // 0 = Sunday
+    const startWeekday = firstDay.getDay();
 
     const cells = [];
     for (let i = 0; i < startWeekday; i++) {
-      cells.push(null); // leading blank
+      cells.push(null);
     }
     for (const d of daily) {
       cells.push(d);
@@ -43,10 +43,32 @@
     expandedDate ? byDate.get(expandedDate) : null
   );
 
+  const sortedForetold = $derived(
+    [...foretoldTransactions].sort((a, b) => a.date.localeCompare(b.date))
+  );
+
+  async function loadDaily() {
+    const data = await apiFetch(`/valhalla/balances/projection/daily`);
+    daily = data.daily ?? [];
+  }
+
+
+async function loadForetold() {
+    const txData = await apiFetch(`/valhalla/transactions/`);
+    const today = new Date().toISOString().slice(0, 10);
+
+    foretoldTransactions = (txData.transactions ?? []).filter(t => {
+      if (t.status !== undefined) {
+        return t.status === "scheduled";
+      }
+      // No status at all — fall back to date, same rule as the backend
+      return t.date > today;
+    });
+}
+
   onMount(async () => {
     try {
-      const data = await apiFetch(`/valhalla/balances/projection/daily`);
-      daily = data.daily ?? [];
+      await Promise.all([loadDaily(), loadForetold()]);
     } catch (e) {
       error = e.message;
     } finally {
@@ -69,6 +91,18 @@
 
   function dayNumber(dateStr) {
     return new Date(dateStr).getDate();
+  }
+
+  async function markLanded(transactionId) {
+    markingLanded = transactionId;
+    try {
+      await apiFetch(`/valhalla/transactions/${transactionId}/mark-posted`, { method: "PATCH" });
+      await Promise.all([loadDaily(), loadForetold()]);
+    } catch (e) {
+      error = "Could not mark that transaction as landed.";
+    } finally {
+      markingLanded = null;
+    }
   }
 </script>
 
@@ -145,6 +179,31 @@
         {/if}
       </div>
     {/if}
+
+    <div class="awaiting-section">
+      <h2 class="awaiting-title">Awaiting Arrival</h2>
+      {#if sortedForetold.length === 0}
+        <p class="empty">Nothing foretold right now.</p>
+      {:else}
+        {#each sortedForetold as t}
+          <div class="awaiting-row">
+            <span class="awaiting-date">{t.date}</span>
+            <span class="awaiting-main">
+              {t.category} — {t.type === "expense" ? "-" : "+"}${t.amount?.toFixed?.(2) ?? t.amount}
+            </span>
+            <button
+              type="button"
+              class="rune-btn landed-btn"
+              disabled={markingLanded === t.transaction_id}
+              onclick={() => markLanded(t.transaction_id)}
+              title="Mark as landed"
+            >
+              {markingLanded === t.transaction_id ? "…" : "🔥"}
+            </button>
+          </div>
+        {/each}
+      {/if}
+    </div>
   {/if}
 </div>
 
@@ -338,6 +397,70 @@
   .detail-row.expense { color: #d69f9f; }
 
   .detail-empty {
+    opacity: 0.5;
+    font-style: italic;
+    font-size: 0.85rem;
+  }
+
+  .awaiting-section {
+    position: relative;
+    z-index: 2;
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(220, 200, 240, 0.15);
+  }
+
+  .awaiting-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1.1rem;
+    opacity: 0.85;
+    margin: 0 0 1rem 0;
+  }
+
+  .awaiting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.7rem;
+    margin-bottom: 0.4rem;
+    background: rgba(220, 200, 240, 0.05);
+    border: 1px solid rgba(220, 200, 240, 0.15);
+    border-radius: 8px;
+    font-size: 0.85rem;
+  }
+
+  .awaiting-date {
+    opacity: 0.6;
+    white-space: nowrap;
+  }
+
+  .awaiting-main {
+    flex: 1;
+  }
+
+  .rune-btn {
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid rgba(220, 200, 240, 0.3);
+    background: rgba(220, 200, 240, 0.05);
+    color: #e8dcf0;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .landed-btn:hover:not(:disabled) {
+    border-color: rgba(232, 216, 150, 0.7);
+    background: rgba(232, 216, 150, 0.15);
+  }
+
+  .rune-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .empty {
     opacity: 0.5;
     font-style: italic;
     font-size: 0.85rem;
