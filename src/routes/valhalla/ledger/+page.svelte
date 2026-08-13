@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { authStore } from "$lib/authStore";
-  import { get } from "svelte/store";
-  import { PUBLIC_API_URL } from '$env/static/public';
+  import { apiFetch } from "$lib/api";
   import { goto } from "$app/navigation";
+  import { onMount } from "svelte";
 
   let amount = $state("");
   let type = $state("expense");
@@ -14,6 +13,18 @@
   let error = $state("");
   let success = $state(false);
 
+  let burdens = $state([]);
+  let selectedBurdenId = $state("");
+
+  onMount(async () => {
+    try {
+      const data = await apiFetch("/valhalla/setup/dashboard");
+      burdens = (data.commitments ?? []).filter(c => c.setup_id);
+    } catch (e) {
+      // silent — burden selection is optional, form still works without it
+    }
+  });
+
   async function carve() {
     error = "";
     if (!amount || !category || !source) {
@@ -22,15 +33,11 @@
     }
 
     loading = true;
-    const auth = get(authStore);
 
     try {
-      const res = await fetch(`${PUBLIC_API_URL}/valhalla/transactions/`, {
+      await apiFetch("/valhalla/transactions/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.token}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: parseFloat(amount),
           type,
@@ -41,9 +48,12 @@
         })
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || "The Ledger would not accept this offering.");
+      if (selectedBurdenId) {
+        await apiFetch(`/valhalla/setup/${selectedBurdenId}/pay`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: parseFloat(amount) })
+        });
       }
 
       success = true;
@@ -98,6 +108,18 @@
           <input type="text" bind:value={source} placeholder="chase checking, cash..." />
         </label>
       </div>
+
+      {#if type === "expense" && burdens.length > 0}
+        <label>
+          Paying off a Burden? <span class="optional">(optional)</span>
+          <select bind:value={selectedBurdenId}>
+            <option value="">Not a burden payment</option>
+            {#each burdens as b}
+              <option value={b.setup_id}>{b.name}</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
 
       <label>
         Description <span class="optional">(optional)</span>

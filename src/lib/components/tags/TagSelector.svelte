@@ -1,8 +1,9 @@
+
 <script lang="ts">
   import TagChip from "./TagChip.svelte";
   import TagEditor from "./TagEditor.svelte";
   import { createPhoenixTag } from "../../../routes/rituals/TagFactory";
-  import { PUBLIC_API_URL } from '$env/static/public';
+  import { apiFetch } from "$lib/api";
 
   const {
     selected = [],
@@ -44,10 +45,7 @@
     loading = true;
 
     try {
-      const res = await fetch(`${PUBLIC_API_URL}/tags/suggest?query=${encodeURIComponent(text)}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await apiFetch(`/tags/suggest?query=${encodeURIComponent(text)}`);
       suggestions = Array.isArray(data.tags) ? data.tags : [];
     } catch (err) {
       console.error("Tag suggestion error:", err);
@@ -83,21 +81,12 @@ function onInput(e: Event) {
 
   async function handleEditorSave(updatedTag: any) {
     try {
-        const res = await fetch(`${PUBLIC_API_URL}/tags/create`, {
+      const savedTag = await apiFetch("/tags/create", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedTag)
       });
 
-      if (!res.ok) {
-        console.error("Tag create failed:", await res.text());
-        return;
-      }
-
-      const savedTag = await res.json();
       oncreate?.(savedTag);
     } catch (err) {
       console.error("Tag create error:", err);

@@ -87,10 +87,8 @@ export function buildFragment(steps: PhoenixStep[], ritualType: string = "emotio
     for (const t of s.createdTags) {
       mergedTags.push(structuredClone(t));
     }
-    for (const t of s.inferredTags) {
-      mergedTags.push(structuredClone(t));
-    }
-  }
+}
+
 
   // 6. Generate symbolic anchor from text + archetypes + anchors
   const allResponses = enrichedSteps.map((s) => s.response).join(" ");

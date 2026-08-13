@@ -1,7 +1,5 @@
 <script lang="ts">
-  import { authStore } from "$lib/authStore";
-  import { get } from "svelte/store";
-  import { PUBLIC_API_URL } from '$env/static/public';
+  import { apiFetch } from "$lib/api";
   import { goto } from "$app/navigation";
   import { onMount } from "svelte";
 
@@ -44,16 +42,10 @@
   }
 
   async function loadDashboard() {
-    const auth = get(authStore);
     try {
-      const res = await fetch(`${PUBLIC_API_URL}/valhalla/setup/dashboard`, {
-        headers: { Authorization: `Bearer ${auth.token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        commitments = data.commitments ?? [];
-        totalOutflow = data.total_outflow ?? null;
-      }
+      const data = await apiFetch(`/valhalla/setup/dashboard`);
+      commitments = data.commitments ?? [];
+      totalOutflow = data.total_outflow ?? null;
     } catch (e) {
       // silent — commitments are secondary to the form itself
     }
@@ -69,15 +61,11 @@
     }
 
     loading = true;
-    const auth = get(authStore);
 
     try {
-      const res = await fetch(`${PUBLIC_API_URL}/valhalla/setup/create`, {
+      await apiFetch("/valhalla/setup/create", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.token}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
           category,
@@ -100,14 +88,6 @@
         })
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        const msg = Array.isArray(data.detail)
-          ? data.detail.map(d => d.msg).join(", ")
-          : data.detail;
-        throw new Error(msg || "The Burdens would not accept this weight.");
-      }
-
       success = true;
       await loadDashboard();
       setTimeout(() => goto("/valhalla"), 1400);
@@ -118,6 +98,7 @@
     }
   }
 </script>
+
 
 <div class="burdens-chamber">
   <h1 class="title">The Burdens</h1>

@@ -1,8 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { authStore } from "$lib/authStore";
-  import { get } from "svelte/store";
-  import { PUBLIC_API_URL } from '$env/static/public';
+  import { apiFetch } from "$lib/api";
 
   let balance = $state(null);
   let monthBalance = $state(null);
@@ -11,7 +9,7 @@
   let lastReckonedDate = $state(null);
   let loading = $state(true);
   let error = $state("");
-
+  let projectedEOM = $state(null);
   const quotes = [
     "Cattle die, and kinsmen die, and so one dies one's self; but a noble name will never die, if good renown one gets.",
     "Cattle die, and kinsmen die; one thing now that never dies — the fame of a dead man's deeds.",
@@ -42,30 +40,35 @@
     monthBalance !== null ? monthBalance.balance - upcomingTotal : null
   );
 
-  onMount(async () => {
-    const auth = get(authStore);
-    const headers = { Authorization: `Bearer ${auth.token}` };
 
+  onMount(async () => {
     try {
-      const [balRes, monthRes, setupRes, hoardRes, reckonedRes] = await Promise.all([
-        fetch(`${PUBLIC_API_URL}/valhalla/balances/view`, { headers }),
-        fetch(`${PUBLIC_API_URL}/valhalla/balances/view?start_date=${startOfMonthStr}`, { headers }),
-        fetch(`${PUBLIC_API_URL}/valhalla/setup/dashboard`, { headers }),
-        fetch(`${PUBLIC_API_URL}/valhalla/hoard/view`, { headers }),
-        fetch(`${PUBLIC_API_URL}/valhalla/setup/last-reckoned`, { headers }),
+    const [balRes, monthRes, setupRes, hoardRes, reckonedRes, projRes] = await Promise.allSettled([
+        apiFetch(`/valhalla/balances/available`),
+        apiFetch(`/valhalla/balances/view?start_date=${startOfMonthStr}`),
+
+        apiFetch(`/valhalla/setup/dashboard`),
+        apiFetch(`/valhalla/hoard/view`),
+        apiFetch(`/valhalla/setup/last-reckoned`),
+        apiFetch(`/valhalla/balances/projection/end-of-month`),
       ]);
 
-      if (!balRes.ok) throw new Error("Could not reach the Hall's ledger.");
-      balance = await balRes.json();
-      monthBalance = monthRes.ok ? await monthRes.json() : { balance: 0 };
+      if (balRes.status !== "fulfilled") {
+        throw new Error("Could not reach the Hall's ledger.");
+      }
+      balance = balRes.value;
 
-      const setupData = setupRes.ok ? await setupRes.json() : { commitments: [] };
+      monthBalance = monthRes.status === "fulfilled" ? monthRes.value : { balance: 0 };
+
+      const setupData = setupRes.status === "fulfilled" ? setupRes.value : { commitments: [] };
       commitments = setupData.commitments ?? [];
 
-      hoard = hoardRes.ok ? await hoardRes.json() : null;
+      hoard = hoardRes.status === "fulfilled" ? hoardRes.value : null;
 
-      const reckonedData = reckonedRes.ok ? await reckonedRes.json() : {};
+      const reckonedData = reckonedRes.status === "fulfilled" ? reckonedRes.value : {};
       lastReckonedDate = reckonedData.last_reckoned_date ?? null;
+
+      projectedEOM = projRes.status === "fulfilled" ? projRes.value.balance : null;
     } catch (e) {
       error = e.message;
     } finally {
@@ -82,6 +85,7 @@
     { name: "The Glen", desc: "Money & feeling, side by side", href: "/valhalla/glen" },
   ];
 </script>
+
 
 <div class="hall">
   <div class="mist"></div>
@@ -132,6 +136,17 @@
         <div class="moon-marker" style="left: {monthProgress * 100}%"></div>
       </div>
       <p class="moon-caption">Day {dayOfMonth} of {daysInMonth}</p>
+      
+      <a href="/valhalla/foretelling" class="foretelling-stone">
+  <div class="stone-glow"></div>
+  <span class="stone-label">The Foretelling</span>
+  {#if projectedEOM !== null}
+    <span class="stone-value {projectedEOM >= 0 ? 'positive' : 'negative'}">
+      ${projectedEOM.toFixed(2)}
+    </span>
+  {/if}
+  <span class="stone-caption">by month's end</span>
+        </a>
 
       <div class="cashflow-stats">
         <div class="cashflow-item">
@@ -208,6 +223,68 @@
     pointer-events: none;
     z-index: 0;
   }
+
+  .foretelling-stone {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 220px;
+  padding: 1.5rem;
+  margin-bottom: 2.5rem;
+  background: radial-gradient(circle at center, rgba(220, 200, 240, 0.08), rgba(10, 14, 20, 0.6));
+  border: 1px solid rgba(220, 200, 240, 0.3);
+  border-radius: 16px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.foretelling-stone:hover {
+  border-color: rgba(220, 200, 240, 0.7);
+  box-shadow: 0 0 30px rgba(220, 200, 240, 0.25);
+  transform: translateY(-3px);
+}
+
+.stone-glow {
+  position: absolute;
+  inset: -50%;
+  background: radial-gradient(circle, rgba(220, 200, 240, 0.15), transparent 70%);
+  animation: stoneGlowPulse 4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes stoneGlowPulse {
+  from { opacity: 0.5; }
+  to   { opacity: 1; }
+}
+
+.stone-label {
+  position: relative;
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+.stone-value {
+  position: relative;
+  font-family: 'Cinzel', serif;
+  font-size: 1.6rem;
+  text-shadow: 0 0 12px currentColor;
+}
+
+.stone-caption {
+  position: relative;
+  font-size: 0.7rem;
+  opacity: 0.5;
+  font-style: italic;
+}
+
 
   .hall-title {
     position: relative;

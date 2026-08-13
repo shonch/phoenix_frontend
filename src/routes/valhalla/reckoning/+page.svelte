@@ -1,8 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { authStore } from "$lib/authStore";
-  import { get } from "svelte/store";
-  import { PUBLIC_API_URL } from '$env/static/public';
+  import { apiFetch } from "$lib/api";
 
   let bankBalance = $state("");
   let checked = $state(false);
@@ -12,17 +10,12 @@
   let error = $state("");
   let showFullHistory = $state(false);
   let lastReckonedDate = $state(null);
+  let confirmingDelete = $state(null);
 
   async function loadLastReckoned() {
-    const auth = get(authStore);
     try {
-      const res = await fetch(`${PUBLIC_API_URL}/valhalla/setup/last-reckoned`, {
-        headers: { Authorization: `Bearer ${auth.token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        lastReckonedDate = data.last_reckoned_date;
-      }
+      const data = await apiFetch(`/valhalla/setup/last-reckoned`);
+      lastReckonedDate = data.last_reckoned_date;
     } catch (e) {
       // silent — non-critical
     }
@@ -38,20 +31,15 @@
     }
 
     loading = true;
-    const auth = get(authStore);
 
     try {
-      const balRes = await fetch(`${PUBLIC_API_URL}/valhalla/balances/view`, {
-        headers: { Authorization: `Bearer ${auth.token}` }
-      });
-      const balData = await balRes.json();
+      const balData = await apiFetch(`/valhalla/balances/available`);
       valhallaBalance = balData.balance ?? 0;
 
-      const txRes = await fetch(`${PUBLIC_API_URL}/valhalla/transactions/`, {
-        headers: { Authorization: `Bearer ${auth.token}` }
-      });
-      const txData = await txRes.json();
-      transactions = (txData.transactions ?? []).sort((a, b) => b.date.localeCompare(a.date));
+      const txData = await apiFetch(`/valhalla/transactions/`);
+      transactions = (txData.transactions ?? [])
+        .filter(t => (t.status ?? "posted") === "posted")
+        .sort((a, b) => b.date.localeCompare(a.date));
 
       checked = true;
     } catch (e) {
@@ -62,15 +50,35 @@
   }
 
   async function markAgreed() {
-    const auth = get(authStore);
     try {
-      await fetch(`${PUBLIC_API_URL}/valhalla/setup/mark-agreed`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${auth.token}` }
-      });
+      await apiFetch(`/valhalla/setup/mark-agreed`, { method: "POST" });
       await loadLastReckoned();
     } catch (e) {
       // silent — non-critical
+    }
+  }
+
+  function requestDelete(transactionId) {
+    if (confirmingDelete === transactionId) {
+      doDelete(transactionId);
+    } else {
+      confirmingDelete = transactionId;
+      setTimeout(() => {
+        if (confirmingDelete === transactionId) confirmingDelete = null;
+      }, 4000);
+    }
+  }
+
+  async function doDelete(transactionId) {
+    confirmingDelete = null;
+    try {
+      await apiFetch(`/valhalla/transactions/${transactionId}`, { method: "DELETE" });
+      const txData = await apiFetch(`/valhalla/transactions/`);
+      transactions = (txData.transactions ?? [])
+        .filter(t => (t.status ?? "posted") === "posted")
+        .sort((a, b) => b.date.localeCompare(a.date));
+    } catch (e) {
+      error = "Could not delete that transaction.";
     }
   }
 
@@ -132,6 +140,17 @@
         <div class="tx-row">
           <span class="tx-date">{t.date}</span>
           <span class="tx-main">{t.category} — {t.type === "expense" ? "-" : "+"}${t.amount?.toFixed?.(2) ?? t.amount}</span>
+          <span class="tx-actions">
+            <button
+              type="button"
+              class="rune-btn delete-btn"
+              class:confirming={confirmingDelete === t.transaction_id}
+              onclick={() => requestDelete(t.transaction_id)}
+              title={confirmingDelete === t.transaction_id ? "Click again to confirm" : "Delete this transaction"}
+            >
+              {confirmingDelete === t.transaction_id ? "Confirm?" : "✕"}
+            </button>
+          </span>
         </div>
       {/each}
     </div>
@@ -272,10 +291,41 @@
   .tx-row {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
     padding: 0.4rem 0.6rem;
     margin-bottom: 0.3rem;
     background: rgba(150, 210, 180, 0.05);
     border-radius: 6px;
     font-size: 0.85rem;
+  }
+
+  .tx-actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-left: auto;
+    padding-left: 0.75rem;
+  }
+
+  .rune-btn {
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid rgba(150, 210, 180, 0.3);
+    background: rgba(150, 210, 180, 0.05);
+    color: #dcf0e8;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .delete-btn:hover {
+    border-color: rgba(240, 160, 160, 0.6);
+    background: rgba(240, 160, 160, 0.1);
+  }
+
+  .delete-btn.confirming {
+    border-color: rgba(240, 160, 160, 0.9);
+    background: rgba(240, 160, 160, 0.25);
+    color: #f0a0a0;
   }
 </style>
