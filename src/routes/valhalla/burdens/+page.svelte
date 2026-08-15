@@ -41,6 +41,9 @@
     components = components.filter((_, idx) => idx !== i);
   }
 
+
+  let confirmingDelete = $state(null);
+
   async function loadDashboard() {
     try {
       const data = await apiFetch(`/valhalla/setup/dashboard`);
@@ -52,6 +55,28 @@
   }
 
   onMount(loadDashboard);
+
+  function requestDeleteBurden(setupId) {
+    if (confirmingDelete === setupId) {
+      doDeleteBurden(setupId);
+    } else {
+      confirmingDelete = setupId;
+      setTimeout(() => {
+        if (confirmingDelete === setupId) confirmingDelete = null;
+      }, 4000);
+    }
+  }
+
+  async function doDeleteBurden(setupId) {
+    confirmingDelete = null;
+    try {
+      await apiFetch(`/valhalla/setup/${setupId}`, { method: "DELETE" });
+      await loadDashboard();
+    } catch (e) {
+      error = "Could not remove that burden.";
+    }
+  }
+
 
   async function bind_() {
     error = "";
@@ -237,11 +262,21 @@
     {:else}
       {#each commitments as c}
         <div class="commitment-row">
-          <div class="commitment-top">
+         <div class="commitment-top">
             <span class="commitment-name">{c.name}</span>
             <span class="commitment-amount">${c.amount?.toFixed?.(2) ?? c.amount}</span>
+            <button
+              type="button"
+              class="rune-btn delete-btn"
+              class:confirming={confirmingDelete === c.setup_id}
+              onclick={() => requestDeleteBurden(c.setup_id)}
+              title={confirmingDelete === c.setup_id ? "Click again to confirm" : "Remove this burden"}
+            >
+              {confirmingDelete === c.setup_id ? "Confirm?" : "✕"}
+            </button>
           </div>
-          <span class="commitment-due">{c.due_date} — {c.recurrence}</span>
+
+	 <span class="commitment-due">{c.due_date} — {c.recurrence}</span>
           {#if c.interest_this_payment != null}
             <span class="commitment-breakdown">
               ${c.interest_this_payment.toFixed(2)} interest / ${c.principal_this_payment.toFixed(2)} principal — est. ${c.projected_balance.toFixed(2)} remaining
@@ -445,7 +480,32 @@
   .commitment-top {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
   }
+
+  .rune-btn {
+    padding: 0.2rem 0.45rem;
+    border-radius: 6px;
+    border: 1px solid rgba(200, 100, 90, 0.3);
+    background: rgba(200, 100, 90, 0.05);
+    color: #f0dcdc;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .delete-btn:hover {
+    border-color: rgba(240, 160, 160, 0.6);
+    background: rgba(240, 160, 160, 0.1);
+  }
+
+  .delete-btn.confirming {
+    border-color: rgba(240, 160, 160, 0.9);
+    background: rgba(240, 160, 160, 0.25);
+    color: #f0a0a0;
+  }
+
 
   .commitment-due {
     opacity: 0.6;
