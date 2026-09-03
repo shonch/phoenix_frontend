@@ -50,10 +50,44 @@ onMount(() => {
   console.log("INITIAL STEPS:", steps);
 
   let currentStep = $state(0);
-  let stage = $state("ritual");
+  let stage = $state("select");
   let closingLine = $state("");
   let phoenixFragment = $state(null);
   let advancing = $state(false);
+
+
+    const ritualTypes = [
+    { type: "emotion", label: "Emotion", rune: "ᛖ", element: "fire" },
+    { type: "detective", label: "Detective", rune: "ᛞ", element: "lightning" },
+    { type: "mirror", label: "Mirror", rune: "ᛗ", element: "ice" },
+    { type: "grind", label: "Grind", rune: "ᚷ", element: "sun" },
+    { type: "anti_grind", label: "Release", rune: "ᚱ", element: "wind" },
+    { type: "threshold", label: "Threshold", rune: "ᚦ", element: "ice" },
+    { type: "emerge", label: "Emerge", rune: "ᛖᛗ", element: "fire" },
+    { type: "pulse", label: "Pulse", rune: "ᛈ", element: "lightning" },
+  ].map((r, i, arr) => {
+
+
+    const angle = (i / arr.length) * 2 * Math.PI - Math.PI / 2; // start at top
+    const radius = 42; // percent of container
+    const x = 50 + radius * Math.cos(angle);
+    const y = 50 + radius * Math.sin(angle);
+    return { ...r, x, y };
+  });
+
+  function selectRitual(type) {
+    ritualType = type;
+    hasClassified = true;
+    steps = ritualPrompts[type].map(s => ({
+      ...s,
+      response: "",
+      tags: [],
+      createdTags: [],
+      inferredTags: []
+    }));
+    currentStep = 0;
+    stage = "ritual";
+  }
 
   function back() {
     console.log("BACK FIRED — currentStep:", currentStep);
@@ -86,77 +120,6 @@ onMount(() => {
 
     advancing = false;
     console.log("ADVANCING FALSE");
-
-    // ⭐ CLASSIFIER TRIGGER
-    // ⭐ CLASSIFIER TRIGGER
-    if (!hasClassified) {
-      hasClassified = true;
-      console.log("CLASSIFIER TRIGGER — using step 0:", steps[0]);
-      // ...rest unchanged
-
-
-    const payload = {
-  fragment: {
-    metadata: {
-      raw_inputs: [
-        {
-          step: String(steps[0].id),
-          label: String(steps[0].label),
-          text: String(steps[0].response ?? "")
-        }
-      ]
-    }
-  }
-};
-
-
-      console.log("CLASSIFIER PAYLOAD:", payload);
-
-      let data;
-      try {
-        data = await apiFetch(`/rituals/classify/`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-      } catch (err) {
-        console.error("CLASSIFIER ERROR:", err.message);
-        return;
-      }
-
-      console.log("CLASSIFIER RESULT:", data);
-
-
-      ritualType = String(data.ritual_type);
-      console.log("RITUAL TYPE SET:", ritualType);
-
-     const newSteps = ritualPrompts[ritualType].map((s, i) => {
-  if (i === 0) {
-    return {
-      ...s,
-      response: $state.snapshot(steps[0]).response,
-      tags: $state.snapshot(steps[0]).tags,
-      createdTags: $state.snapshot(steps[0]).createdTags,
-      inferredTags: []
-    };
-  }
-  return {
-    ...s,
-    response: "",
-    tags: [],
-    createdTags: [],
-    inferredTags: []
-  };
-});
-
-
-      console.log("NEW STEPS BEFORE ASSIGN:", newSteps);
-
-      steps = newSteps;
-
-
-      console.log("STEPS REPLACED — now:", steps);
-    }
   }
 
 
@@ -241,15 +204,14 @@ function handleCreatedTags(tag: any) {
     stage = "closing";
     await invalidateAll(); // refresh dashboard data now that a real fragment exists
 
-    // Reset ritual state so the NEXT ritual re-runs classification instead
-    // of reusing this one's leftover type/steps. Without this, hasClassified
-    // stays true for the rest of the browser session and every subsequent
-    // ritual silently skips classification entirely.
+    // Reset ritual state so the NEXT ritual returns to selection instead
+    // of reusing this one's leftover type/steps.
     hasClassified = false;
     ritualType = undefined;
     currentStep = 0;
     capturedSteps = [];
     steps = structuredClone(ritualSteps);
+    stage = "select";
 
     console.log("RITUAL COMPLETE — fragment:", phoenixFragment);
     console.log("RITUAL STATE RESET FOR NEXT RITUAL");
@@ -266,6 +228,29 @@ function handleCreatedTags(tag: any) {
   <div class="ember-field"></div>
   <div class="heat-shimmer"></div>
   <div class="rune-ring"></div>
+
+  {#if stage === "select"}
+
+      <div class="ritual-select">
+      <h2 class="select-title">Choose your path</h2>
+      <div class="stone-circle">
+        {#each ritualTypes as r}
+                  <button
+            type="button"
+            class="stone-btn"
+            data-element={r.element}
+            style="left: {r.x}%; top: {r.y}%;"
+            onclick={() => selectRitual(r.type)}
+          >
+            <span class="stone-rune">{r.rune}</span>
+            <span class="stone-label">{r.label}</span>
+            <span class="stone-particles"></span>
+          </button>
+
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   {#if stage === "ritual"}
     <div class="step-wrap">
@@ -347,7 +332,7 @@ function handleCreatedTags(tag: any) {
     pointer-events: none;
   }
 
-  .rune-ring {
+    .rune-ring {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -357,11 +342,11 @@ function handleCreatedTags(tag: any) {
     max-height: 90vw;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    border: 2px solid rgba(255, 140, 66, 0.3);
+    border: 2px solid rgba(255, 140, 66, 0.4);
     box-shadow:
       0 0 40px rgba(255, 140, 66, 0.2),
       inset 0 0 40px rgba(255, 140, 66, 0.1);
-    animation: rotateRing 24s linear infinite;
+    animation: rotateRing 24s linear infinite, ringFlicker 2.5s ease-in-out infinite alternate;
     pointer-events: none;
     z-index: -1;
   }
@@ -370,6 +355,222 @@ function handleCreatedTags(tag: any) {
     from { transform: translate(-50%, -50%) rotate(0deg); }
     to   { transform: translate(-50%, -50%) rotate(360deg); }
   }
+
+  @keyframes ringFlicker {
+    0% {
+      border-color: rgba(255, 140, 66, 0.35);
+      box-shadow:
+        0 0 30px rgba(255, 100, 30, 0.25),
+        inset 0 0 30px rgba(255, 100, 30, 0.1);
+    }
+    30% {
+      border-color: rgba(255, 180, 90, 0.6);
+      box-shadow:
+        0 0 55px rgba(255, 160, 60, 0.4),
+        inset 0 0 45px rgba(255, 140, 66, 0.2);
+    }
+    55% {
+      border-color: rgba(255, 120, 40, 0.45);
+      box-shadow:
+        0 0 40px rgba(255, 90, 20, 0.3),
+        inset 0 0 35px rgba(255, 100, 30, 0.15);
+    }
+    100% {
+      border-color: rgba(255, 200, 120, 0.7);
+      box-shadow:
+        0 0 60px rgba(255, 180, 90, 0.45),
+        inset 0 0 50px rgba(255, 160, 60, 0.25);
+    }
+  }
+
+
+  .ritual-select {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+  }
+
+  .select-title {
+    font-family: var(--phoenix-font, 'Cinzel', serif);
+    letter-spacing: 0.1em;
+    color: #ffb87a;
+    text-transform: uppercase;
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+  }
+
+    .stone-circle {
+    position: relative;
+    width: 560px;
+    height: 560px;
+    max-width: 90vw;
+    max-height: 90vw;
+    margin: 0 auto;
+  }
+
+      .stone-btn {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    width: 120px;
+    padding: 1.6rem 0.8rem;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 140, 66, 0.3);
+    background: radial-gradient(circle at 50% 30%, rgba(255, 140, 66, 0.1), rgba(20, 12, 8, 0.6));
+    color: #fbeee2;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.25s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    box-shadow: 0 0 0px rgba(255, 140, 66, 0);
+  }
+
+  .stone-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 20%, rgba(255, 180, 120, 0.25), transparent 65%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+
+        .stone-btn:hover {
+    border-color: rgba(255, 180, 120, 0.8);
+    transform: translate(-50%, -50%) translateY(-5px) scale(1.04);
+
+      box-shadow:
+      0 0 24px rgba(255, 140, 66, 0.35),
+      inset 0 0 16px rgba(255, 140, 66, 0.15);
+  }
+
+  .stone-btn:hover::before {
+    opacity: 1;
+  }
+  
+
+
+  .stone-rune {
+    position: relative;
+    font-size: 2rem;
+    transition: text-shadow 0.3s ease;
+  }
+
+  .stone-btn:hover .stone-rune {
+    text-shadow: 0 0 12px #ffb87a, 0 0 24px #ff8c42;
+  }
+    .stone-particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .stone-btn:hover .stone-particles {
+    opacity: 1;
+  }
+
+  /* FIRE */
+  .stone-btn[data-element="fire"]:hover .stone-rune {
+    text-shadow: 0 0 10px #ff6a00, 0 0 20px #ff3c00, 0 0 30px #ff2200;
+  }
+
+  .stone-btn[data-element="fire"] .stone-particles::before {
+    content: "";
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    background: #ffb080;
+    border-radius: 50%;
+    animation: stoneSparks 0.8s infinite ease-out;
+  }
+
+  @keyframes stoneSparks {
+    0% { transform: translate(0,0) scale(1); opacity: 1; }
+    100% { transform: translate(10px,-24px) scale(0.2); opacity: 0; }
+  }
+
+  /* ICE */
+  .stone-btn[data-element="ice"]:hover .stone-rune {
+    text-shadow: 0 0 12px #a0eaff, 0 0 24px #d0f7ff;
+  }
+
+  .stone-btn[data-element="ice"] .stone-particles::before {
+    content: "";
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    width: 3px;
+    height: 3px;
+    background: #d0f7ff;
+    border-radius: 50%;
+    animation: stoneFrost 1.2s infinite ease-in-out;
+  }
+
+  @keyframes stoneFrost {
+    0% { transform: translate(0,0); opacity: 0.8; }
+    100% { transform: translate(-10px,10px); opacity: 0; }
+  }
+
+  /* LIGHTNING */
+  .stone-btn[data-element="lightning"]:hover .stone-rune {
+    text-shadow: 0 0 14px #ffffff, 0 0 28px #e0eaff;
+    animation: stoneFlicker 0.15s infinite;
+  }
+
+  @keyframes stoneFlicker {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
+
+  /* WIND */
+  .stone-btn[data-element="wind"]:hover .stone-rune {
+    text-shadow: 0 0 10px #b0dfff, 0 0 20px #80cfff;
+  }
+
+  .stone-btn[data-element="wind"] .stone-particles::before {
+    content: "";
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    width: 3px;
+    height: 3px;
+    background: #80cfff;
+    border-radius: 50%;
+    animation: stoneDrift 1.5s infinite ease-out;
+  }
+
+  @keyframes stoneDrift {
+    0% { transform: translate(0,0); opacity: 0.7; }
+    100% { transform: translate(18px,0); opacity: 0; }
+  }
+
+  /* SUN */
+  .stone-btn[data-element="sun"]:hover .stone-rune {
+    text-shadow: 0 0 12px #fff7b0, 0 0 24px #ffe680;
+  }
+
+
+  .stone-label {
+    position: relative;
+    font-family: var(--phoenix-font, 'Cinzel', serif);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.75;
+    transition: opacity 0.3s ease;
+  }
+
+  .stone-btn:hover .stone-label {
+    opacity: 1;
+  }
+
 
   .step-wrap {
     position: relative;
