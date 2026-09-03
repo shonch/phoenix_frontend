@@ -9,12 +9,14 @@ import { redirect } from "@sveltejs/kit";
 export async function load({ url }) {
     const auth = get(authStore);
 
-    if (!auth.token && url.pathname !== "/login") {
+    const publicPaths = ["/login", "/forgot-password"];
+
+    if (!auth.token && !publicPaths.includes(url.pathname)) {
         throw redirect(302, "/login");
     }
 
     if (!auth.token) {
-        // On the login page itself with no token — nothing to load yet.
+        // On a public page with no token — nothing to load yet.
         return {};
     }
 
