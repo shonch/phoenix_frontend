@@ -15,8 +15,15 @@
     "Cattle die, and kinsmen die; one thing now that never dies — the fame of a dead man's deeds.",
     "Full-stocked folds had the Fatling's sons, who bear now a beggar's staff: brief is wealth, as the winking of an eye, most faithless ever of friends.",
     "Early must he rise who wants to have another's cattle or life; seldom does a reclining wolf get the meat, nor a sleeping man victory.",
-    "He hath need of his wits who wanders wide; aught simple will serve at home."
+    "He hath need of his wits who wanders wide; aught simple will serve at home.",
+    "It is best for man to be middle-wise, not overly cunning and clever: the fairest lives are led by those who know much, but not too much.",
+    "The unwise man is awake all night, thinking of many things; when morning comes he is worn with care, and his trouble is just as it was.",
+    "A better burden may no man bear on the way than his mother wit; no worse provision can he carry with him than too deep a draught of ale.",
+    "The niggard is worried by everything; the mean man mopes over gifts.",
+    "Give praise to the day at evening, to a woman on her pyre, to a weapon when tried, to a maid at wedlock, to ice when it is crossed, to ale that is drunk."
   ];
+
+
   const quote = quotes[Math.floor(Math.random() * quotes.length)];
 
   const now = new Date();
@@ -105,7 +112,7 @@
         <span class="value income">${balance.income_total.toFixed(2)}</span>
       </div>
       <div class="summary-item">
-        <span class="label">Burdens</span>
+        <span class="label">The Outpour</span>
         <span class="value expense">${balance.expense_total.toFixed(2)}</span>
       </div>
       <div class="summary-item balance-item">

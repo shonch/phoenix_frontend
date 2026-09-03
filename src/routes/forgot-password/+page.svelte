@@ -1,29 +1,28 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { authStore } from "$lib/authStore";
   import { PUBLIC_API_URL } from '$env/static/public';
-  let mode = $state<"login" | "register">("login");
+
   let email = $state("");
-  let password = $state("");
-  let username = $state("");
+  let recoveryCode = $state("");
+  let newPassword = $state("");
   let error = $state("");
   let loading = $state(false);
+  let success = $state(false);
+  let newRecoveryCode = $state(null);
 
   async function submit() {
     error = "";
     loading = true;
 
-    const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
-    const payload =
-      mode === "login"
-        ? { email, password }
-        : { email, password, username };
-
     try {
-      const res = await fetch(`${PUBLIC_API_URL}${endpoint}`, {
-      method: "POST",
+      const res = await fetch(`${PUBLIC_API_URL}/auth/reset-password`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          email,
+          recovery_code: recoveryCode,
+          new_password: newPassword
+        })
       });
 
       const data = await res.json();
@@ -34,84 +33,61 @@
         return;
       }
 
-      authStore.set({ token: data.token, refresh_token: data.refresh_token, email: data.email }); 
-      goto("/dashboard");
+      success = true;
+      newRecoveryCode = data.new_recovery_code;
     } catch (err) {
       error = "Could not reach the Archive. Is the backend running?";
+    } finally {
       loading = false;
     }
   }
-
-  function toggleMode() {
-    mode = mode === "login" ? "register" : "login";
-    error = "";
-  }
 </script>
 
-<div class="login-chamber">
+<div class="reset-chamber">
   <div class="rune-ring"></div>
 
-  <div class="login-card">
-    <h1 class="title">
-      {mode === "login" ? "Enter the Archive" : "Begin Your Fragment"}
-    </h1>
+  <div class="reset-card">
+    {#if success}
+      <h1 class="title">Password Reset</h1>
+      <p class="success-msg">Your password has been changed.</p>
 
-    <form onsubmit={(e) => { e.preventDefault(); submit(); }}>
-      {#if mode === "register"}
+      <p class="recovery-warning">Your recovery code has been renewed — save this new one:</p>
+      <p class="recovery-code">{newRecoveryCode}</p>
+
+      <button class="submit-btn" onclick={() => goto('/login')}>Return to Login</button>
+    {:else}
+      <h1 class="title">Reset Your Password</h1>
+
+      <form onsubmit={(e) => { e.preventDefault(); submit(); }}>
         <label>
-          Name
-          <input
-            type="text"
-            value={username}
-            oninput={(e) => username = e.target.value}
-            placeholder="What shall we call you?"
-          />
+          Email
+          <input type="email" required bind:value={email} />
         </label>
-      {/if}
 
-      <label>
-        Email
-        <input
-          type="email"
-          required
-          value={email}
-          oninput={(e) => email = e.target.value}
-        />
-      </label>
+        <label>
+          Recovery Code
+          <input type="text" required bind:value={recoveryCode} placeholder="XXXX-XXXX-XXXX" />
+        </label>
 
-      <label>
-        Password
-        <input
-          type="password"
-          required
-          value={password}
-          oninput={(e) => password = e.target.value}
-        />
-      </label>
+        <label>
+          New Password
+          <input type="password" required bind:value={newPassword} />
+        </label>
 
-      {#if error}
-        <p class="error">{error}</p>
-      {/if}
+        {#if error}
+          <p class="error">{error}</p>
+        {/if}
 
-      <button type="submit" class="submit-btn" disabled={loading}>
-        {loading ? "…" : (mode === "login" ? "Enter" : "Begin")}
-      </button>
-    </form>
- 
-        <button class="toggle-btn" onclick={toggleMode}>
-      {mode === "login" ? "New here? Begin your fragment." : "Already have an account? Enter."}
-    </button>
-
-    <a href="/forgot-password" class="toggle-btn" style="display: block; margin-top: 0.6rem;">
-      Forgot your password?
-    </a>
-
-
+        <button type="submit" class="submit-btn" disabled={loading}>
+          {loading ? "…" : "Reset Password"}
+        </button>
+      </form>
+    {/if}
   </div>
 </div>
 
 <style>
-  .login-chamber {
+  .reset-chamber {
     position: relative;
     min-height: 100vh;
     display: flex;
@@ -131,19 +107,13 @@
     border-radius: 50%;
     border: 2px solid rgba(255, 140, 66, 0.2);
     box-shadow: 0 0 40px rgba(255, 140, 66, 0.15);
-    animation: rotateRing 30s linear infinite;
     pointer-events: none;
   }
 
-  @keyframes rotateRing {
-    from { transform: translate(-50%, -50%) rotate(0deg); }
-    to   { transform: translate(-50%, -50%) rotate(360deg); }
-  }
-
-  .login-card {
+  .reset-card {
     position: relative;
     z-index: 1;
-    max-width: 360px;
+    max-width: 380px;
     width: 100%;
     padding: 2.5rem;
     background: rgba(10, 10, 10, 0.6);
@@ -157,7 +127,7 @@
     font-family: 'Cinzel', serif;
     text-align: center;
     color: #fbeee2;
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     margin-bottom: 1.5rem;
     text-shadow: 0 0 10px rgba(255, 140, 66, 0.4);
   }
@@ -192,7 +162,32 @@
     margin: 0;
   }
 
+  .success-msg {
+    text-align: center;
+    color: #9fd6a0;
+    margin-bottom: 1.5rem;
+  }
+
+  .recovery-warning {
+    font-size: 0.85rem;
+    color: #f0c090;
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .recovery-code {
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    text-align: center;
+    padding: 0.6rem;
+    background: rgba(255, 140, 66, 0.1);
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+    word-break: break-all;
+  }
+
   .submit-btn {
+    width: 100%;
     margin-top: 0.5rem;
     padding: 0.7rem;
     border-radius: 999px;
@@ -209,17 +204,5 @@
   .submit-btn:disabled {
     opacity: 0.5;
     cursor: default;
-  }
-
-  .toggle-btn {
-    margin-top: 1.2rem;
-    background: none;
-    border: none;
-    color: rgba(255, 140, 66, 0.7);
-    font-size: 0.8rem;
-    cursor: pointer;
-    text-decoration: underline;
-    width: 100%;
-    text-align: center;
   }
 </style>

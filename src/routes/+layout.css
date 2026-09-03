@@ -39,6 +39,7 @@ body {
 
 
 /* MAIN CONTENT */
+/* MAIN CONTENT */
 main {
     flex: 1;
     display: block; /* FIX */
@@ -51,6 +52,10 @@ main {
     overflow-y: auto;
 }
 
+/* Reserve space for RunicNav, which is position: fixed and outside normal flow */
+main.with-nav {
+    margin-left: 5rem;
+}
 
 /* MODE RUNE TOGGLE */
 .mode-rune {
@@ -182,3 +187,67 @@ body::after {
     }
 }
 
+
+.account-rune {
+    position: fixed;
+    top: 1rem;
+    right: 4rem;
+    font-size: 1.6rem;
+    cursor: pointer;
+    user-select: none;
+    opacity: 0.7;
+    color: rgba(255,255,255,0.85);
+    z-index: 9999;
+    transition: opacity 0.2s ease;
+}
+
+.account-rune:hover {
+    opacity: 1;
+}
+
+.account-panel {
+    position: fixed;
+    top: 4rem;
+    right: 1rem;
+    width: 280px;
+    padding: 1.5rem;
+    background: rgba(10, 10, 15, 0.9);
+    border: 1px solid rgba(255, 140, 66, 0.3);
+    border-radius: 12px;
+    color: #fbeee2;
+    font-family: 'Cinzel', serif;
+    z-index: 9999;
+    backdrop-filter: blur(8px);
+}
+
+.close-btn {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    background: none;
+    border: none;
+    color: #fbeee2;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.recovery-warning {
+    font-size: 0.8rem;
+    color: #f0c090;
+    margin-bottom: 0.5rem;
+}
+
+.recovery-code {
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    text-align: center;
+    padding: 0.6rem;
+    background: rgba(255, 140, 66, 0.1);
+    border-radius: 6px;
+    word-break: break-all;
+}
+
+.recovery-error {
+    color: #f0a0a0;
+    font-size: 0.85rem;
+}
