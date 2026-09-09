@@ -45,15 +45,19 @@
 
 {#if !selectedCollection}
     <p class="subtitle">Choose a collection to view:</p>
-
-    <div class="collection-grid">
+          <div class="collection-grid">
         {#each Object.entries(COLLECTION_LABELS) as [key, label]}
-            <div class="collection-card" onclick={() => selectCollection(key)}>
-                <h2>{label}</h2>
-                <p class="count">{(data?.collections?.[key] ?? []).length} entries</p>
-            </div>
+            {@const count = (data?.collections?.[key] ?? []).length}
+            {#if count > 0}
+                <div class="collection-card" onclick={() => selectCollection(key)}>
+                    <h2>{label}</h2>
+                    <p class="count">{count} entries</p>
+                </div>
+            {/if}
         {/each}
     </div>
+
+
 {:else}
     <button class="back-btn" onclick={backToSelector}>← Back to collections</button>
 

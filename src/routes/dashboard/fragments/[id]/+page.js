@@ -5,7 +5,7 @@ export async function load({ params, parent }) {
   const allCollections = [
     ...(raw.fragments ?? []),
     ...(raw.emotional_fragments ?? []),
-    ...(raw.clues ?? []),
+
     ...(raw.thresholds ?? []),
     ...(raw.revelations ?? [])
   ];
