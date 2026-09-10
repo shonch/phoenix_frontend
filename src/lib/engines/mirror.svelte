@@ -1,10 +1,16 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
+
   const { data } = $props();
 
+  const total = data?.total ?? 0;
+  const fragments = data?.fragments ?? [];
   const identityPatterns = data?.identity_patterns ?? [];
   const identityShifts = data?.identity_shifts ?? [];
-  const mythicResonance = data?.mythic_resonance ?? [];
-  const anchors = data?.anchors ?? [];
+
+  function openFragment(id: string) {
+    goto(`/dashboard/fragments/${id}`);
+  }
 
   function formatDate(value: string | null) {
     if (!value) return "";
@@ -16,24 +22,29 @@
 <div class="mirror-container">
   <header class="header">
     <h1>🪞 Mirror Engine</h1>
-    <p class="subtitle">Identity tags, shifts, and resonance across your fragments.</p>
+    <p class="subtitle">{total} Mirror fragments — identity tags and shifts within them.</p>
   </header>
 
   <section class="panel">
-    <h2>Identity Anchors</h2>
-    {#if anchors.length === 0}
-      <p class="empty">No identity anchors detected yet.</p>
+    <h2>Mirror Fragments</h2>
+    {#if fragments.length === 0}
+      <p class="empty">No Mirror fragments yet.</p>
     {:else}
-      <ul class="tag-list">
-        {#each anchors as a}
-          <li><strong>{a.anchor}</strong> — {a.count} {a.count === 1 ? "time" : "times"}</li>
+      <div class="fragment-list">
+        {#each fragments as f}
+          <button class="fragment-item" onclick={() => openFragment(f.id)}>
+            <span class="frag-title">{f.title ?? "Untitled"}</span>
+            <span class="frag-date">{formatDate(f.date)}</span>
+            {#if f.snippet}<span class="frag-snippet">{f.snippet}</span>{/if}
+          </button>
         {/each}
-      </ul>
+      </div>
     {/if}
   </section>
 
   <section class="panel">
-    <h2>Identity Tags Overall</h2>
+    <h2>Identity Tags</h2>
+    <p class="section-note">How often each identity-related tag appears across your Mirror fragments.</p>
     {#if identityPatterns.length === 0}
       <p class="empty">No identity-related tags detected yet.</p>
     {:else}
@@ -60,22 +71,6 @@
               <span>Lost: {s.lost.join(", ")}</span>
             {/if}
             <small>{formatDate(s.timestamp)}</small>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </section>
-
-  <section class="panel">
-    <h2>Mythic Resonance</h2>
-    {#if mythicResonance.length === 0}
-      <p class="empty">No mythic resonance detected yet.</p>
-    {:else}
-      <ul class="event-list">
-        {#each mythicResonance as r}
-          <li>
-            <span>{r.match_count} {r.match_count === 1 ? "match" : "matches"}</span>
-            <p class="preview">{r.content_preview}</p>
           </li>
         {/each}
       </ul>
@@ -115,6 +110,12 @@
     color: #dfe4ff;
   }
 
+  .section-note {
+    margin: 0 0 0.75rem 0;
+    opacity: 0.6;
+    font-size: 0.85rem;
+  }
+
   .empty {
     opacity: 0.6;
     font-style: italic;
@@ -144,9 +145,40 @@
     margin-top: 0.2rem;
   }
 
-  .preview {
-    margin: 0.3rem 0 0 0;
+  .fragment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .fragment-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.7rem 1rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(200, 200, 255, 0.2);
+    border-radius: 8px;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .fragment-item:hover {
+    background: rgba(200, 200, 255, 0.1);
+  }
+
+  .frag-title {
+    font-weight: 600;
+  }
+
+  .frag-date {
+    font-size: 0.8rem;
+    opacity: 0.7;
+  }
+
+  .frag-snippet {
+    font-size: 0.85rem;
     opacity: 0.8;
-    font-size: 0.9rem;
   }
 </style>

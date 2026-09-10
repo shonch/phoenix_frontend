@@ -3,9 +3,10 @@
 
   const { data } = $props();
 
-  const totalFragments = data?.total_emotional_fragments ?? 0;
-  const griefEvents = data?.grief_events ?? 0;
-  const recentGrief = data?.recent_grief ?? [];
+  const label = data?.label ?? "Traces of Grief";
+  const totalScanned = data?.total_scanned ?? 0;
+  const traceCount = data?.trace_count ?? 0;
+  const traces = data?.traces ?? [];
 
   function openFragment(id: string) {
     goto(`/dashboard/fragments/${id}`);
@@ -20,30 +21,37 @@
 
 <div class="grief-container">
   <header class="header">
-    <h1>💙 Grief Engine</h1>
-    <p class="subtitle">Waves of grief across your fragments.</p>
+    <h1>💙 {label}</h1>
+    <p class="subtitle">
+      A search for the word "grief" across your fragments — not a ritual
+      category, since Grief was never one you write directly. A trace can
+      surface inside a fragment about something else entirely.
+    </p>
   </header>
 
   <section class="panel">
     <p class="stat-line">
-      <strong>{griefEvents}</strong> of <strong>{totalFragments}</strong>
-      emotional fragments have touched grief.
+      <strong>{traceCount}</strong> of <strong>{totalScanned}</strong>
+      fragments contain a trace of grief.
     </p>
   </section>
 
   <section class="panel">
-    <h2>Recent Grief Fragments</h2>
+    <h2>Where Grief Surfaced</h2>
 
-    {#if recentGrief.length === 0}
-      <p class="empty">No grief fragments logged yet.</p>
+    {#if traces.length === 0}
+      <p class="empty">No traces found yet.</p>
     {:else}
       <div class="fragment-list">
-        {#each recentGrief as f}
+        {#each traces as f}
           <button class="fragment-item" onclick={() => openFragment(f.id)}>
-            <span class="frag-subject">{f.subject ?? "Untitled"}</span>
+            <span class="frag-subject">
+              {f.subject ?? "Untitled"}
+              {#if f.type}<span class="frag-type">— {f.type}</span>{/if}
+            </span>
             <span class="frag-date">{formatDate(f.date)}</span>
-            {#if f.weather}
-              <span class="frag-weather">{f.weather}</span>
+            {#if f.snippet}
+              <span class="frag-snippet">{f.snippet}</span>
             {/if}
           </button>
         {/each}
@@ -69,6 +77,7 @@
   .subtitle {
     opacity: 0.7;
     margin-top: 0.25rem;
+    font-size: 0.9rem;
   }
 
   .panel {
@@ -121,14 +130,20 @@
     font-weight: 600;
   }
 
+  .frag-type {
+    font-weight: normal;
+    opacity: 0.6;
+    font-size: 0.85rem;
+    text-transform: capitalize;
+  }
+
   .frag-date {
     font-size: 0.8rem;
     opacity: 0.7;
   }
 
-  .frag-weather {
+  .frag-snippet {
     font-size: 0.85rem;
     opacity: 0.8;
-    font-style: italic;
   }
 </style>

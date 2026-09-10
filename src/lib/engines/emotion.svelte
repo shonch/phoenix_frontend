@@ -3,18 +3,15 @@
 
   const { data } = $props();
 
-  const dominantEmotions = data?.dominant_emotions ?? [];
-  const tagFrequency = data?.tag_frequency ?? [];
+  const totalFragments = data?.total ?? 0;
+  const fragments = data?.fragments ?? [];
+  const recurringWords = data?.recurring_words ?? [];
+  const trendLabel = data?.trend_label ?? null;
 
-  let expandedEmotion = $state<string | null>(null);
-  let expandedTag = $state<string | null>(null);
+  let expandedWord = $state<string | null>(null);
 
-  function toggleEmotion(emotion: string) {
-    expandedEmotion = expandedEmotion === emotion ? null : emotion;
-  }
-
-  function toggleTag(tag: string) {
-    expandedTag = expandedTag === tag ? null : tag;
+  function toggleWord(word: string) {
+    expandedWord = expandedWord === word ? null : word;
   }
 
   function openFragment(id: string) {
@@ -31,60 +28,51 @@
 <div class="frequency-panel">
   <header class="header">
     <h1>💫 Emotion Engine</h1>
-    <p class="subtitle">How often each feeling and tag has risen in your fragments.</p>
+    <p class="subtitle">
+      {totalFragments} Emotion {totalFragments === 1 ? "fragment" : "fragments"}
+      {#if trendLabel}— {trendLabel}{/if}
+    </p>
   </header>
 
   <section>
-    <h2 class="section-title">🔥 Emotional Embers</h2>
+    <h2 class="section-title">🔥 Emotion Fragments</h2>
 
-    {#if dominantEmotions.length === 0}
-      <p class="empty">No emotional embers have risen yet.</p>
+    {#if fragments.length === 0}
+      <p class="empty">No Emotion fragments yet.</p>
     {:else}
-      <div class="entries">
-        {#each dominantEmotions as e}
-          <div class="entry">
-            <button class="entry-header" onclick={() => toggleEmotion(e.emotion)}>
-              <span class="ember-word">{e.emotion}</span>
-              <span class="count">{e.count} {e.count === 1 ? "ember" : "embers"} risen</span>
-            </button>
-
-            {#if expandedEmotion === e.emotion}
-              <div class="fragment-list">
-                {#each e.fragments as f}
-                  <button class="fragment-item" onclick={() => openFragment(f.id)}>
-                    <span class="frag-date">{formatDate(f.date)}</span>
-                    <span class="frag-snippet">{f.snippet}</span>
-                  </button>
-                {/each}
-              </div>
-            {/if}
-          </div>
+      <div class="fragment-list standalone">
+        {#each fragments as f}
+          <button class="fragment-item" onclick={() => openFragment(f.id)}>
+            <span class="frag-date">{formatDate(f.date)}</span>
+            {#if f.title}<span class="frag-title">{f.title}</span>{/if}
+            <span class="frag-snippet">{f.snippet}</span>
+          </button>
         {/each}
       </div>
     {/if}
   </section>
 
   <section>
-    <h2 class="section-title">🏷️ Tag Echoes</h2>
+    <h2 class="section-title">🏷️ Recurring Words</h2>
     <p class="section-note">
-      Some of these are still rough — that's expected while the tag vocabulary
-      is refined.
+      Words from a fixed list that recur across your Emotion fragments — a
+      secondary pattern, not a category the fragment itself was sorted into.
     </p>
 
-    {#if tagFrequency.length === 0}
-      <p class="empty">No tag echoes yet.</p>
+    {#if recurringWords.length === 0}
+      <p class="empty">No recurring words yet.</p>
     {:else}
       <div class="entries">
-        {#each tagFrequency as t}
+        {#each recurringWords as w}
           <div class="entry">
-            <button class="entry-header" onclick={() => toggleTag(t.tag)}>
-              <span class="ember-word">{t.tag}</span>
-              <span class="count">{t.count} {t.count === 1 ? "echo" : "echoes"}</span>
+            <button class="entry-header" onclick={() => toggleWord(w.word)}>
+              <span class="ember-word">{w.word}</span>
+              <span class="count">{w.count} {w.count === 1 ? "time" : "times"}</span>
             </button>
 
-            {#if expandedTag === t.tag}
+            {#if expandedWord === w.word}
               <div class="fragment-list">
-                {#each t.fragments as f}
+                {#each w.fragments as f}
                   <button class="fragment-item" onclick={() => openFragment(f.id)}>
                     <span class="frag-date">{formatDate(f.date)}</span>
                     <span class="frag-snippet">{f.snippet}</span>
@@ -181,30 +169,48 @@
     border-top: 1px solid rgba(201, 166, 255, 0.18);
   }
 
+  .fragment-list.standalone {
+    border-top: none;
+    gap: 0.4rem;
+  }
+
   .fragment-item {
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
     padding: 0.7rem 1rem;
-    background: none;
-    border: none;
-    border-bottom: 1px solid rgba(201, 166, 255, 0.1);
+    background: rgba(201, 166, 255, 0.05);
+    border: 1px solid rgba(201, 166, 255, 0.15);
+    border-radius: 8px;
     color: inherit;
     text-align: left;
     cursor: pointer;
   }
 
-  .fragment-item:last-child {
+  .fragment-list:not(.standalone) .fragment-item {
+    border: none;
+    border-bottom: 1px solid rgba(201, 166, 255, 0.1);
+    border-radius: 0;
+    background: none;
+  }
+
+  .fragment-list:not(.standalone) .fragment-item:last-child {
     border-bottom: none;
   }
 
   .fragment-item:hover {
-    background: rgba(201, 166, 255, 0.1);
+    background: rgba(201, 166, 255, 0.12);
   }
 
   .frag-date {
     font-size: 0.75rem;
     opacity: 0.6;
+  }
+
+  .frag-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    opacity: 0.9;
   }
 
   .frag-snippet {

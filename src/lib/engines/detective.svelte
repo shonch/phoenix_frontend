@@ -3,11 +3,12 @@
 
   const { data } = $props();
 
-  const cases = data?.cases?.files ?? [];
-  const clues = data?.clues ?? {};
+  const total = data?.total ?? 0;
+  const fragments = data?.fragments ?? [];
   const echoes = data?.echoes ?? {};
-  const revelations = data?.revelations ?? {};
   const symbols = data?.symbols ?? {};
+  const cases = data?.cases ?? {};
+  const caseFiles = cases?.files ?? [];
 
   function openFragment(id: string) {
     if (id) goto(`/dashboard/fragments/${id}`);
@@ -23,36 +24,34 @@
 <div class="detective-container">
   <header class="header">
     <h1>🕵️ Detective Engine</h1>
-    <p class="subtitle">Clues, echoes, and unresolved threads across your fragments.</p>
+    <p class="subtitle">{total} Detective fragments — clues, echoes, and unresolved threads.</p>
   </header>
 
   <section class="panel">
     <h2>Clues</h2>
-    {#if !clues.total}
+    {#if fragments.length === 0}
       <p class="empty">No clues logged yet.</p>
     {:else}
       <p class="stat-line">
-        <strong>{clues.total}</strong> total —
-        <strong>{clues.status?.unresolved ?? 0}</strong> unresolved
+        <strong>{cases.resolved_count ?? 0}</strong> resolved —
+        <strong>{cases.unresolved_count ?? 0}</strong> unresolved
       </p>
-
-      {#if clues.recent?.length > 0}
-        <div class="event-list">
-          {#each clues.recent as cl}
-            <button class="event-item" class:clickable={!!cl.id} onclick={() => openFragment(cl.id)}>
-              <span class="event-subject">{cl.subject ?? "Untitled"}</span>
-              <span class="event-date">{formatDate(cl.date)}</span>
-              {#if cl.weather}<span class="event-weather">{cl.weather}</span>{/if}
-            </button>
-          {/each}
-        </div>
-      {/if}
+      <div class="event-list">
+        {#each fragments as cl}
+          <button class="event-item clickable" onclick={() => openFragment(cl.id)}>
+            <span class="event-subject">{cl.subject ?? "Untitled"}</span>
+            <span class="event-date">{formatDate(cl.date)}</span>
+            {#if cl.weather}<span class="event-weather">{cl.weather}</span>{/if}
+            {#if cl.snippet}<span class="event-snippet">{cl.snippet}</span>{/if}
+          </button>
+        {/each}
+      </div>
     {/if}
   </section>
 
   <section class="panel">
     <h2>Echoes</h2>
-    {#if echoes.intensity == null || echoes.intensity === 0}
+    {#if !echoes.intensity}
       <p class="empty">No repeating patterns detected yet.</p>
     {:else}
       <p class="stat-line">Echo intensity: <strong>{echoes.intensity}</strong></p>
@@ -78,30 +77,11 @@
   </section>
 
   <section class="panel">
-    <h2>Revelations</h2>
-    {#if !revelations.total}
-      <p class="empty">No revelations logged yet.</p>
-    {:else}
-      <p class="stat-line"><strong>{revelations.total}</strong> total</p>
-      {#if revelations.recent?.length > 0}
-        <div class="event-list">
-          {#each revelations.recent as r}
-            <button class="event-item" class:clickable={!!r.id} onclick={() => openFragment(r.id)}>
-              <span class="event-subject">{r.subject ?? "Untitled"}</span>
-              <span class="event-date">{formatDate(r.date)}</span>
-            </button>
-          {/each}
-        </div>
-      {/if}
-    {/if}
-  </section>
-
-  <section class="panel">
     <h2>Symbolic Density</h2>
     {#if !symbols.symbolic_density}
       <p class="empty">No symbolic patterns detected yet.</p>
     {:else}
-      <p class="stat-line">{symbols.symbolic_density} distinct symbols in play</p>
+      <p class="stat-line">{symbols.symbolic_density} distinct tags in play</p>
       {#if symbols.top_tags?.length > 0}
         <ul class="tag-list">
           {#each symbols.top_tags as t}
@@ -114,11 +94,12 @@
 
   <section class="panel">
     <h2>Unresolved Threads</h2>
-    {#if cases.length === 0}
+    <p class="section-note">A clue is "unresolved" until it shares 2 or more real tags with another fragment.</p>
+    {#if caseFiles.length === 0}
       <p class="empty">No unresolved threads clustered yet.</p>
     {:else}
       <div class="event-list">
-        {#each cases as file}
+        {#each caseFiles as file}
           <div class="case-item">
             <strong>{file.symbol}</strong> — {file.count} related clues
             {#if file.dominant_weather}<span class="event-weather">{file.dominant_weather}</span>{/if}
@@ -167,6 +148,12 @@
     opacity: 0.8;
   }
 
+  .section-note {
+    margin: 0 0 0.75rem 0;
+    opacity: 0.6;
+    font-size: 0.85rem;
+  }
+
   .empty {
     opacity: 0.6;
     font-style: italic;
@@ -213,6 +200,11 @@
   .event-date, .event-weather {
     font-size: 0.8rem;
     opacity: 0.7;
+  }
+
+  .event-snippet {
+    font-size: 0.85rem;
+    opacity: 0.85;
   }
 
   .tag-list {
