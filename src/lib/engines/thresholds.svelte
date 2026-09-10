@@ -3,9 +3,10 @@
 
   const { data } = $props();
 
-  const totalThresholds = data?.total_thresholds ?? 0;
-  const fatigueEvents = data?.fatigue_events ?? 0;
-  const recentFatigue = data?.recent_fatigue ?? [];
+  const total = data?.total ?? 0;
+  const fragments = data?.fragments ?? [];
+  const fatigueTraceCount = data?.fatigue_trace_count ?? 0;
+  const fatigueTraces = data?.fatigue_traces ?? [];
 
   function openFragment(id: string) {
     if (id) goto(`/dashboard/fragments/${id}`);
@@ -21,32 +22,44 @@
 <div class="threshold-container">
   <header class="header">
     <h1>🛡️ Threshold Engine</h1>
-    <p class="subtitle">Boundaries and fatigue across your thresholds.</p>
+    <p class="subtitle">{total} Threshold fragments — boundaries you've named.</p>
   </header>
 
   <section class="panel">
+    <h2>Threshold Fragments</h2>
+    {#if fragments.length === 0}
+      <p class="empty">No Threshold fragments yet.</p>
+    {:else}
+      <div class="event-list">
+        {#each fragments as f}
+          <button class="event-item clickable" onclick={() => openFragment(f.id)}>
+            <span class="event-subject">{f.title ?? "Untitled"}</span>
+            <span class="event-date">{formatDate(f.date)}</span>
+            {#if f.snippet}<span class="event-snippet">{f.snippet}</span>{/if}
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </section>
+
+  <section class="panel">
     <p class="stat-line">
-      <strong>{fatigueEvents}</strong> of <strong>{totalThresholds}</strong>
-      thresholds have touched fatigue.
+      <strong>{fatigueTraceCount}</strong> of <strong>{total}</strong>
+      Threshold fragments contain a trace of fatigue.
     </p>
   </section>
 
   <section class="panel">
-    <h2>Recent Fatigue Events</h2>
-
-    {#if recentFatigue.length === 0}
-      <p class="empty">No fatigue events logged yet.</p>
+    <h2>Fatigue Traces</h2>
+    {#if fatigueTraces.length === 0}
+      <p class="empty">No fatigue traces yet.</p>
     {:else}
       <div class="event-list">
-        {#each recentFatigue as ev}
-          <button
-            class="event-item"
-            class:clickable={!!ev.id}
-            onclick={() => openFragment(ev.id)}
-          >
-            <span class="event-subject">{ev.subject ?? "Threshold event"}</span>
-            {#if ev.weather}<span class="event-weather">{ev.weather}</span>{/if}
-            <span class="event-date">{formatDate(ev.date)}</span>
+        {#each fatigueTraces as f}
+          <button class="event-item clickable" onclick={() => openFragment(f.id)}>
+            <span class="event-subject">{f.title ?? "Untitled"}</span>
+            <span class="event-date">{formatDate(f.date)}</span>
+            {#if f.snippet}<span class="event-snippet">{f.snippet}</span>{/if}
           </button>
         {/each}
       </div>
@@ -128,9 +141,13 @@
     font-weight: 600;
   }
 
-  .event-weather,
   .event-date {
     font-size: 0.8rem;
     opacity: 0.7;
+  }
+
+  .event-snippet {
+    font-size: 0.85rem;
+    opacity: 0.8;
   }
 </style>
