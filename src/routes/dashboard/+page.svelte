@@ -32,7 +32,7 @@
 
     const archetypeName = mythicTag?.name || "Traveler";
     const emotionLabel = mythicTag?.archetype || "unspoken feeling";
-    const trendLabel = analysis?.emotional_trend || "a quiet, shifting current";
+
 
 </script>
 
@@ -48,10 +48,6 @@
         its ember carries <span class="emphasis">{emotionLabel}</span> into the cold air.
     </p>
 
-    <p class="line">
-        The winds of your recent path whisper of
-        <span class="emphasis">{trendLabel}</span>.
-    </p>
 
     <p class="line final">
         When you are ready, cast your gaze to the runes on the left
