@@ -4,11 +4,9 @@
 
   let name = $state("");
   let planName = $state("");
-  let category = $state("Debt");
   let amount = $state("");
   let recurrence = $state("monthly");
   let paymentsRemaining = $state("");
-  let currentBalance = $state("");
   let dueDate = $state(new Date().toISOString().slice(0, 10));
   let archetype = $state("");
   let symbolicTag = $state("");
@@ -33,7 +31,6 @@
   let form = $state({
     name: "",
     plan_name: "",
-    category: "",
     amount: "",
     recurrence: "monthly",
     due_date: "",
@@ -41,13 +38,10 @@
     end_date: "",
     payments_remaining: "",
     total_payments: "",
-    current_balance: "",
     archetype: "",
     symbolic_tag: "",
     symbolic_time: "",
   });
-
-  const categoryOptions = ["Debt", "Subscription", "Symbolic", "Legacy"];
 
   const symbolicTimeOptions = [
     { value: "🌅 Morning", label: "🌅 Morning" },
@@ -162,7 +156,6 @@
     form = {
       name: c.name ?? "",
       plan_name: c.plan_name ?? "",
-      category: c.category ?? "",
       amount: c.amount != null ? String(c.amount) : "",
       recurrence: c.recurrence ?? "none",
       due_date: c.due_date ?? "",
@@ -170,7 +163,6 @@
       end_date: c.end_date ?? "",
       payments_remaining: c.payments_remaining != null ? String(c.payments_remaining) : "",
       total_payments: c.total_payments != null ? String(c.total_payments) : "",
-      current_balance: c.current_balance != null ? String(c.current_balance) : "",
       archetype: c.archetype ?? "",
       symbolic_tag: c.symbolic_tag ?? "",
       symbolic_time: c.symbolic_time ?? "",
@@ -189,7 +181,6 @@
 
     if (f.name.trim() !== (orig.name ?? "")) changes.name = f.name.trim();
     if (f.plan_name.trim() !== (orig.plan_name ?? "")) changes.plan_name = f.plan_name.trim();
-    if (f.category !== (orig.category ?? "")) changes.category = f.category;
     if (Number(f.amount) !== Number(orig.amount) || f.amount === "") changes.amount = f.amount;
     if (f.recurrence !== (orig.recurrence ?? "none")) changes.recurrence = f.recurrence;
     if (f.due_date !== (orig.due_date ?? "")) changes.due_date = f.due_date;
@@ -207,11 +198,6 @@
       if (f.total_payments !== origTotal) {
         changes.total_payments = f.total_payments === "" ? null : Number(f.total_payments);
       }
-    }
-
-    const origBalance = orig.current_balance != null ? String(orig.current_balance) : "";
-    if (f.current_balance !== origBalance) {
-      changes.current_balance = f.current_balance === "" ? null : f.current_balance;
     }
 
     if (f.archetype !== (orig.archetype ?? "")) changes.archetype = f.archetype;
@@ -266,12 +252,10 @@
         body: JSON.stringify({
           name,
           plan_name: planName || null,
-          category,
           amount: parseFloat(amount),
           recurrence,
           payments_remaining:
             recurrence !== "none" && paymentsRemaining ? parseInt(paymentsRemaining) : null,
-          current_balance: currentBalance ? parseFloat(currentBalance) : null,
           due_date: dueDate,
           archetype: archetype || "Unassigned",
           symbolic_tag: symbolicTag || "Untitled",
@@ -285,15 +269,14 @@
       });
 
       // Stay on the page so a whole payment plan can be entered one payment at
-      // a time. Name, plan, category, amount and recurrence carry over (each
-      // payment is still entered by hand); the fields that are specific to
-      // one payment are cleared.
+      // a time. Name, plan, amount and recurrence carry over (each payment is
+      // still entered by hand); the fields that are specific to one payment
+      // are cleared.
       success = true;
       dueDate = "";
       startDate = "";
       endDate = "";
       paymentsRemaining = "";
-      currentBalance = "";
       components = [];
       await loadBurdens();
       setTimeout(() => {
@@ -357,23 +340,10 @@
           <input type="text" bind:value={form.plan_name} list="plan-names" />
         </label>
 
-        <div class="row">
-          <label>
-            Category
-            <select bind:value={form.category}>
-              {#if form.category && !categoryOptions.includes(form.category)}
-                <option value={form.category}>{form.category}</option>
-              {/if}
-              {#each categoryOptions as opt}
-                <option value={opt}>{opt}</option>
-              {/each}
-            </select>
-          </label>
-          <label>
-            Payment Amount
-            <input type="number" step="0.01" bind:value={form.amount} />
-          </label>
-        </div>
+        <label>
+          Payment Amount
+          <input type="number" step="0.01" bind:value={form.amount} />
+        </label>
 
         <label>
           Recurrence
@@ -419,13 +389,6 @@
           Start Date <span class="optional">(optional)</span>
           <input type="date" bind:value={form.start_date} />
         </label>
-
-        {#if form.category === "Debt"}
-          <label>
-            Current Remaining Balance <span class="optional">(reference only; blank clears)</span>
-            <input type="number" step="0.01" bind:value={form.current_balance} />
-          </label>
-        {/if}
 
         <label>
           Archetype
@@ -486,22 +449,10 @@
       </datalist>
     </label>
 
-    <div class="row">
-      <label>
-        Category
-        <select bind:value={category}>
-          <option value="Debt">Debt</option>
-          <option value="Subscription">Subscription</option>
-          <option value="Symbolic">Symbolic</option>
-          <option value="Legacy">Legacy</option>
-        </select>
-      </label>
-
-      <label>
-        Payment Amount
-        <input type="number" step="0.01" bind:value={amount} placeholder="0.00" />
-      </label>
-    </div>
+    <label>
+      Payment Amount
+      <input type="number" step="0.01" bind:value={amount} placeholder="0.00" />
+    </label>
 
     <label>
       Recurrence
@@ -519,13 +470,6 @@
       <label>
         Payments Remaining <span class="optional">(leave blank if it never ends)</span>
         <input type="number" min="1" step="1" bind:value={paymentsRemaining} placeholder="48" />
-      </label>
-    {/if}
-
-    {#if category === "Debt"}
-      <label>
-        Current Remaining Balance <span class="optional">(optional, for reference only)</span>
-        <input type="number" step="0.01" bind:value={currentBalance} placeholder="From your latest statement" />
       </label>
     {/if}
 
