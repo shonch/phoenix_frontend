@@ -1,20 +1,17 @@
 <script lang="ts">
   import { apiFetch } from "$lib/api";
-  import { goto } from "$app/navigation";
   import { onMount } from "svelte";
 
   let name = $state("");
+  let planName = $state("");
   let category = $state("Debt");
   let amount = $state("");
   let recurrence = $state("monthly");
-  let principal = $state("");
-  let interestRate = $state("");
+  let paymentsRemaining = $state("");
   let currentBalance = $state("");
-  let termMonths = $state("");
   let dueDate = $state(new Date().toISOString().slice(0, 10));
   let archetype = $state("");
   let symbolicTag = $state("");
-  let arcEnabled = $state(false);
   let symbolicTime = $state("");
   let startDate = $state("");
   let endDate = $state("");
@@ -22,8 +19,11 @@
   let loading = $state(false);
   let error = $state("");
   let success = $state(false);
-  let commitments = $state([]);
+
+  let burdens = $state([]);
   let totalOutflow = $state(null);
+  let expandedPlans = $state({});
+  let confirmingDelete = $state(null);
 
   const symbolicTimeOptions = [
     { value: "🌅 Morning", label: "🌅 Morning" },
@@ -33,6 +33,36 @@
     { value: "💧 Release", label: "💧 Release" },
   ];
 
+  const recurrenceLabels = {
+    none: "one-time",
+    weekly: "weekly",
+    biweekly: "biweekly",
+    monthly: "monthly",
+    quarterly: "quarterly",
+    annually: "annually",
+  };
+
+  // Plans: Burdens sharing a plan_name are shown together (e.g. a debt
+  // company's whole payment schedule). Everything else lists individually.
+  let planNames = $derived([...new Set(burdens.map((b) => b.plan_name).filter(Boolean))]);
+
+  let groupedPlans = $derived.by(() => {
+    const map = {};
+    for (const b of burdens) {
+      if (!b.plan_name) continue;
+      (map[b.plan_name] ??= []).push(b);
+    }
+    return Object.entries(map).map(([plan, items]) => ({
+      plan,
+      items,
+      total: items.reduce((sum, i) => sum + (Number(i.amount) || 0), 0),
+      next: items[0]?.due_date,
+      overdueCount: items.filter((i) => i.overdue).length,
+    }));
+  });
+
+  let ungrouped = $derived(burdens.filter((b) => !b.plan_name));
+
   function addComponent() {
     components = [...components, { label: "", amount: "", tag: "" }];
   }
@@ -41,20 +71,28 @@
     components = components.filter((_, idx) => idx !== i);
   }
 
+  function togglePlan(plan) {
+    expandedPlans[plan] = !expandedPlans[plan];
+  }
 
-  let confirmingDelete = $state(null);
+  function money(n) {
+    return Number(n ?? 0).toFixed(2);
+  }
 
-  async function loadDashboard() {
+  async function loadBurdens() {
     try {
-      const data = await apiFetch(`/valhalla/setup/dashboard`);
-      commitments = data.commitments ?? [];
-      totalOutflow = data.total_outflow ?? null;
+      const [list, dash] = await Promise.all([
+        apiFetch("/valhalla/setup/list"),
+        apiFetch("/valhalla/setup/dashboard"),
+      ]);
+      burdens = list.burdens ?? [];
+      totalOutflow = dash.total_outflow ?? null;
     } catch (e) {
-      // silent — commitments are secondary to the form itself
+      // silent — the list is secondary to the form itself
     }
   }
 
-  onMount(loadDashboard);
+  onMount(loadBurdens);
 
   function requestDeleteBurden(setupId) {
     if (confirmingDelete === setupId) {
@@ -71,12 +109,11 @@
     confirmingDelete = null;
     try {
       await apiFetch(`/valhalla/setup/${setupId}`, { method: "DELETE" });
-      await loadDashboard();
+      await loadBurdens();
     } catch (e) {
       error = "Could not remove that burden.";
     }
   }
-
 
   async function bind_() {
     error = "";
@@ -93,29 +130,40 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
+          plan_name: planName || null,
           category,
           amount: parseFloat(amount),
           recurrence,
-          principal: principal ? parseFloat(principal) : 0,
-          interest_rate: interestRate ? parseFloat(interestRate) / 100 : 0,
+          payments_remaining:
+            recurrence !== "none" && paymentsRemaining ? parseInt(paymentsRemaining) : null,
           current_balance: currentBalance ? parseFloat(currentBalance) : null,
-          term_months: termMonths ? parseInt(termMonths) : null,
           due_date: dueDate,
           archetype: archetype || "Unassigned",
           symbolic_tag: symbolicTag || "Untitled",
-          arc_enabled: arcEnabled,
           symbolic_time: symbolicTime || null,
           start_date: startDate || null,
           end_date: endDate || null,
           components: components
-            .filter(c => c.label)
-            .map(c => ({ name: c.label, amount: parseFloat(c.amount) || 0, description: c.tag || null }))
-        })
+            .filter((c) => c.label)
+            .map((c) => ({ name: c.label, amount: parseFloat(c.amount) || 0, description: c.tag || null })),
+        }),
       });
 
+      // Stay on the page so a whole payment plan can be entered one payment at
+      // a time. Name, plan, category, amount and recurrence carry over (each
+      // payment is still entered by hand); the fields that are specific to
+      // one payment are cleared.
       success = true;
-      await loadDashboard();
-      setTimeout(() => goto("/valhalla"), 1400);
+      dueDate = "";
+      startDate = "";
+      endDate = "";
+      paymentsRemaining = "";
+      currentBalance = "";
+      components = [];
+      await loadBurdens();
+      setTimeout(() => {
+        success = false;
+      }, 2500);
     } catch (e) {
       error = e.message;
     } finally {
@@ -124,6 +172,28 @@
   }
 </script>
 
+{#snippet burdenRow(c)}
+  <div class="commitment-row" class:overdue={c.overdue}>
+    <div class="commitment-top">
+      <span class="commitment-name">{c.name}</span>
+      <span class="commitment-amount">${money(c.amount)}</span>
+      <button
+        type="button"
+        class="rune-btn delete-btn"
+        class:confirming={confirmingDelete === c.setup_id}
+        onclick={() => requestDeleteBurden(c.setup_id)}
+        title={confirmingDelete === c.setup_id ? "Click again to confirm" : "Remove this burden"}
+      >
+        {confirmingDelete === c.setup_id ? "Confirm?" : "✕"}
+      </button>
+    </div>
+    <span class="commitment-due">
+      {c.due_date} — {recurrenceLabels[c.recurrence] ?? c.recurrence}
+      {#if c.overdue}<strong class="overdue-tag"> · overdue</strong>{/if}
+      {#if c.payments_remaining != null} · {c.payments_remaining} payments left{/if}
+    </span>
+  </div>
+{/snippet}
 
 <div class="burdens-chamber">
   <h1 class="title">The Burdens</h1>
@@ -131,158 +201,152 @@
 
   {#if success}
     <p class="success">Bound into the Burdens.</p>
-  {:else}
-    <form onsubmit={(e) => { e.preventDefault(); bind_(); }}>
-      <label>
-        Name
-        <input type="text" bind:value={name} placeholder="Student loan, car payment..." />
-      </label>
-
-      <div class="row">
-        <label>
-          Category
-          <select bind:value={category}>
-            <option value="Debt">Debt</option>
-            <option value="Subscription">Subscription</option>
-            <option value="Symbolic">Symbolic</option>
-            <option value="Legacy">Legacy</option>
-          </select>
-        </label>
-
-        <label>
-          Total Payment Amount
-          <input type="number" step="0.01" bind:value={amount} placeholder="0.00" />
-        </label>
-      </div>
-
-      <label>
-        Recurrence
-        <select bind:value={recurrence}>
-          <option value="none">One-time</option>
-          <option value="weekly">Weekly</option>
-          <option value="biweekly">Biweekly</option>
-          <option value="monthly">Monthly</option>
-          <option value="quarterly">Quarterly</option>
-          <option value="annually">Annually</option>
-        </select>
-      </label>
-
-      {#if category === "Debt"}
-        <div class="row">
-          <label>
-            Principal
-            <input type="number" step="0.01" bind:value={principal} placeholder="0.00" />
-          </label>
-          <label>
-            Interest Rate (%)
-            <input type="number" step="0.01" bind:value={interestRate} placeholder="0.0" />
-          </label>
-        </div>
-        <div class="row">
-          <label>
-            Current Remaining Balance
-            <input type="number" step="0.01" bind:value={currentBalance} placeholder="From your latest statement" />
-          </label>
-          <label>
-            Term (months)
-            <input type="number" bind:value={termMonths} placeholder="60" />
-          </label>
-        </div>
-      {/if}
-
-      <div class="row">
-        <label>
-          First Due Date
-          <input type="date" bind:value={dueDate} />
-        </label>
-        <label>
-          Start Date <span class="optional">(optional)</span>
-          <input type="date" bind:value={startDate} />
-        </label>
-      </div>
-
-      <label>
-        End Date <span class="optional">(optional)</span>
-        <input type="date" bind:value={endDate} />
-      </label>
-
-      <label>
-        Archetype <span class="optional">(e.g. The Wanderer, The Guardian)</span>
-        <input type="text" bind:value={archetype} />
-      </label>
-
-      <label>
-        Symbolic Tag <span class="optional">(e.g. "Echo of Oslo")</span>
-        <input type="text" bind:value={symbolicTag} />
-      </label>
-
-      <label>
-        Symbolic Time
-        <select bind:value={symbolicTime}>
-          <option value="">— none —</option>
-          {#each symbolicTimeOptions as opt}
-            <option value={opt.value}>{opt.label}</option>
-          {/each}
-        </select>
-      </label>
-
-      <label class="checkbox-row">
-        <input type="checkbox" bind:checked={arcEnabled} />
-        Enable payoff arc simulation
-      </label>
-
-      <div class="components-section">
-        <h3>Components</h3>
-        {#each components as comp, i}
-          <div class="component-row">
-            <input type="text" bind:value={comp.label} placeholder="Insurance, service fee..." />
-            <input type="number" step="0.01" bind:value={comp.amount} placeholder="Amount" />
-            <input type="text" bind:value={comp.tag} placeholder="Emotional tag" />
-            <button type="button" class="remove-btn" onclick={() => removeComponent(i)}>✕</button>
-          </div>
-        {/each}
-        <button type="button" class="oracle-btn" onclick={addComponent}>🔮 Oracle +</button>
-      </div>
-
-      {#if error}<p class="error">{error}</p>{/if}
-
-      <button type="submit" class="submit-btn" disabled={loading}>
-        {loading ? "Binding..." : "Bind it into the Burdens"}
-      </button>
-    </form>
   {/if}
+
+  <form onsubmit={(e) => { e.preventDefault(); bind_(); }}>
+    <label>
+      Name
+      <input type="text" bind:value={name} placeholder="Car payment, NetCredit payment..." />
+    </label>
+
+    <label>
+      Plan <span class="optional">(optional — groups payments from one plan together)</span>
+      <input type="text" bind:value={planName} list="plan-names" placeholder="NetCredit" />
+      <datalist id="plan-names">
+        {#each planNames as p}
+          <option value={p}></option>
+        {/each}
+      </datalist>
+    </label>
+
+    <div class="row">
+      <label>
+        Category
+        <select bind:value={category}>
+          <option value="Debt">Debt</option>
+          <option value="Subscription">Subscription</option>
+          <option value="Symbolic">Symbolic</option>
+          <option value="Legacy">Legacy</option>
+        </select>
+      </label>
+
+      <label>
+        Payment Amount
+        <input type="number" step="0.01" bind:value={amount} placeholder="0.00" />
+      </label>
+    </div>
+
+    <label>
+      Recurrence
+      <select bind:value={recurrence}>
+        <option value="none">One-time</option>
+        <option value="weekly">Weekly</option>
+        <option value="biweekly">Biweekly</option>
+        <option value="monthly">Monthly</option>
+        <option value="quarterly">Quarterly</option>
+        <option value="annually">Annually</option>
+      </select>
+    </label>
+
+    {#if recurrence !== "none"}
+      <label>
+        Payments Remaining <span class="optional">(leave blank if it never ends)</span>
+        <input type="number" min="1" step="1" bind:value={paymentsRemaining} placeholder="48" />
+      </label>
+    {/if}
+
+    {#if category === "Debt"}
+      <label>
+        Current Remaining Balance <span class="optional">(optional, for reference only)</span>
+        <input type="number" step="0.01" bind:value={currentBalance} placeholder="From your latest statement" />
+      </label>
+    {/if}
+
+    <div class="row">
+      <label>
+        {recurrence === "none" ? "Due Date" : "First Due Date"}
+        <input type="date" bind:value={dueDate} />
+      </label>
+      <label>
+        Start Date <span class="optional">(optional)</span>
+        <input type="date" bind:value={startDate} />
+      </label>
+    </div>
+
+    <label>
+      End Date <span class="optional">(optional)</span>
+      <input type="date" bind:value={endDate} />
+    </label>
+
+    <label>
+      Archetype <span class="optional">(e.g. The Wanderer, The Guardian)</span>
+      <input type="text" bind:value={archetype} />
+    </label>
+
+    <label>
+      Symbolic Tag <span class="optional">(e.g. "Echo of Oslo")</span>
+      <input type="text" bind:value={symbolicTag} />
+    </label>
+
+    <label>
+      Symbolic Time
+      <select bind:value={symbolicTime}>
+        <option value="">— none —</option>
+        {#each symbolicTimeOptions as opt}
+          <option value={opt.value}>{opt.label}</option>
+        {/each}
+      </select>
+    </label>
+
+    <div class="components-section">
+      <h3>Components</h3>
+      {#each components as comp, i}
+        <div class="component-row">
+          <input type="text" bind:value={comp.label} placeholder="Insurance, service fee..." />
+          <input type="number" step="0.01" bind:value={comp.amount} placeholder="Amount" />
+          <input type="text" bind:value={comp.tag} placeholder="Emotional tag" />
+          <button type="button" class="remove-btn" onclick={() => removeComponent(i)}>✕</button>
+        </div>
+      {/each}
+      <button type="button" class="oracle-btn" onclick={addComponent}>🔮 Oracle +</button>
+    </div>
+
+    {#if error}<p class="error">{error}</p>{/if}
+
+    <button type="submit" class="submit-btn" disabled={loading}>
+      {loading ? "Binding..." : "Bind it into the Burdens"}
+    </button>
+  </form>
 
   <div class="commitments-section">
     <h2>What You Carry</h2>
     {#if totalOutflow}
-      <p class="total-line">Projected outflow: <strong>{totalOutflow}</strong></p>
+      <p class="total-line">Due in the next 30 days: <strong>{totalOutflow}</strong></p>
     {/if}
-    {#if commitments.length === 0}
+
+    {#if burdens.length === 0}
       <p class="empty">Nothing bound yet.</p>
     {:else}
-      {#each commitments as c}
-        <div class="commitment-row">
-         <div class="commitment-top">
-            <span class="commitment-name">{c.name}</span>
-            <span class="commitment-amount">${c.amount?.toFixed?.(2) ?? c.amount}</span>
-            <button
-              type="button"
-              class="rune-btn delete-btn"
-              class:confirming={confirmingDelete === c.setup_id}
-              onclick={() => requestDeleteBurden(c.setup_id)}
-              title={confirmingDelete === c.setup_id ? "Click again to confirm" : "Remove this burden"}
-            >
-              {confirmingDelete === c.setup_id ? "Confirm?" : "✕"}
-            </button>
-          </div>
-
-	 <span class="commitment-due">{c.due_date} — {c.recurrence}</span>
-          {#if c.interest_this_payment != null}
-            <span class="commitment-breakdown">
-              ${c.interest_this_payment.toFixed(2)} interest / ${c.principal_this_payment.toFixed(2)} principal — est. ${c.projected_balance.toFixed(2)} remaining
+      {#each groupedPlans as g (g.plan)}
+        <div class="plan-group">
+          <button type="button" class="plan-header" onclick={() => togglePlan(g.plan)}>
+            <span class="chevron">{expandedPlans[g.plan] ? "▾" : "▸"}</span>
+            <span class="plan-name">{g.plan}</span>
+            <span class="plan-meta">
+              {g.items.length} payment{g.items.length === 1 ? "" : "s"} · ${money(g.total)} · next {g.next}
+              {#if g.overdueCount > 0}<strong class="overdue-tag"> · {g.overdueCount} overdue</strong>{/if}
             </span>
+          </button>
+          {#if expandedPlans[g.plan]}
+            {#each g.items as c (c.setup_id)}
+              {@render burdenRow(c)}
+            {/each}
           {/if}
         </div>
+      {/each}
+
+      {#each ungrouped as c (c.setup_id)}
+        {@render burdenRow(c)}
       {/each}
     {/if}
   </div>
@@ -335,12 +399,6 @@
     gap: 0.4rem;
     font-size: 0.85rem;
     opacity: 0.85;
-  }
-
-  .checkbox-row {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.6rem;
   }
 
   .optional {
@@ -443,7 +501,8 @@
     text-align: center;
     color: #9fd6a0;
     font-size: 1.1rem;
-    padding: 2rem 0;
+    padding: 0.5rem 0 1.2rem;
+    margin: 0;
   }
 
   .commitments-section {
@@ -477,6 +536,11 @@
     font-size: 0.9rem;
   }
 
+  .commitment-row.overdue {
+    border-color: rgba(240, 160, 160, 0.55);
+    background: rgba(240, 160, 160, 0.08);
+  }
+
   .commitment-top {
     display: flex;
     justify-content: space-between;
@@ -506,15 +570,54 @@
     color: #f0a0a0;
   }
 
-
   .commitment-due {
     opacity: 0.6;
     font-size: 0.8rem;
   }
 
-  .commitment-breakdown {
-    opacity: 0.5;
+  .overdue-tag {
+    color: #f0a0a0;
+    opacity: 1;
+  }
+
+  .plan-group {
+    margin-bottom: 0.7rem;
+  }
+
+  .plan-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.65rem 0.8rem;
+    margin-bottom: 0.5rem;
+    background: rgba(200, 100, 90, 0.1);
+    border: 1px solid rgba(200, 100, 90, 0.3);
+    border-radius: 8px;
+    color: #f0dcdc;
+    font-family: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .plan-header:hover {
+    background: rgba(200, 100, 90, 0.18);
+  }
+
+  .chevron {
+    width: 1rem;
+    opacity: 0.7;
+  }
+
+  .plan-name {
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.04em;
+  }
+
+  .plan-meta {
+    margin-left: auto;
     font-size: 0.75rem;
-    font-style: italic;
+    opacity: 0.65;
   }
 </style>
