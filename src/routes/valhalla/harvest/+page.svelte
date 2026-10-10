@@ -1,16 +1,21 @@
-
 <script lang="ts">
   import { apiFetch } from "$lib/api";
   import { goto } from "$app/navigation";
 
+  // Valhalla's backend works in UTC dates; a date after this is foretold.
+  const todayUtc = new Date().toISOString().slice(0, 10);
+
   let amount = $state("");
   let category = $state("");
-  let date = $state(new Date().toISOString().slice(0, 10));
+  let date = $state(todayUtc);
   let source = $state("");
   let description = $state("");
   let loading = $state(false);
   let error = $state("");
   let success = $state(false);
+  let successMessage = $state("");
+
+  const isFuture = $derived(date > todayUtc);
 
   async function reap() {
     error = "";
@@ -35,8 +40,12 @@
         })
       });
 
+      const foretold = date > todayUtc;
+      successMessage = foretold
+        ? "Foretold. It waits in the Foretelling until it lands."
+        : "Gathered into the Harvest.";
       success = true;
-      setTimeout(() => goto("/valhalla"), 1200);
+      setTimeout(() => goto(foretold ? "/valhalla/foretelling" : "/valhalla"), 1200);
     } catch (e) {
       error = e.message;
     } finally {
@@ -52,7 +61,7 @@
   <p class="subtitle">What was gathered, and by what labor?</p>
 
   {#if success}
-    <p class="success">Gathered into the Harvest.</p>
+    <p class="success">{successMessage}</p>
   {:else}
     <form onsubmit={(e) => { e.preventDefault(); reap(); }}>
       <label>
@@ -77,6 +86,13 @@
         </label>
       </div>
 
+      {#if isFuture}
+        <p class="note">
+          This date is in the future, so it will be foretold. It won't touch your balance
+          until you mark it landed.
+        </p>
+      {/if}
+
       <label>
         Description <span class="optional">(optional)</span>
         <textarea bind:value={description} rows="3" placeholder="What was this, really?"></textarea>
@@ -85,7 +101,7 @@
       {#if error}<p class="error">{error}</p>{/if}
 
       <button type="submit" disabled={loading}>
-        {loading ? "Gathering..." : "Gather it into the Harvest"}
+        {loading ? "Gathering..." : isFuture ? "Foretell it" : "Gather it into the Harvest"}
       </button>
     </form>
   {/if}
@@ -152,6 +168,14 @@
   .optional {
     opacity: 0.5;
     font-weight: normal;
+  }
+
+  .note {
+    margin: 0;
+    font-size: 0.8rem;
+    font-style: italic;
+    color: #e8d896;
+    opacity: 0.8;
   }
 
   input, textarea {

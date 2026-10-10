@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
   import { apiFetch } from "$lib/api";
 
   let balance = $state(null);
@@ -10,6 +11,8 @@
   let loading = $state(true);
   let error = $state("");
   let projectedEOM = $state(null);
+  let ragnarokNudge = $state(null);
+
   const quotes = [
     "Cattle die, and kinsmen die, and so one dies one's self; but a noble name will never die, if good renown one gets.",
     "Cattle die, and kinsmen die; one thing now that never dies — the fame of a dead man's deeds.",
@@ -50,7 +53,24 @@
 
   onMount(async () => {
     try {
-    const [balRes, monthRes, setupRes, hoardRes, reckonedRes, projRes] = await Promise.allSettled([
+      // --- Ragnarök trigger check ---
+      const lastEntryRes = await apiFetch("/valhalla/transactions/last-entry");
+      if (lastEntryRes.last_date) {
+        const last = new Date(lastEntryRes.last_date + "T00:00:00Z");
+        const today = new Date();
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const daysSince = Math.floor((today - last) / msPerDay);
+
+        if (daysSince >= 8) {
+          await goto("/valhalla/ragnarok");
+          return;
+        }
+        if (daysSince >= 4) {
+          ragnarokNudge = daysSince;
+        }
+      }
+
+      const [balRes, monthRes, setupRes, hoardRes, reckonedRes, projRes] = await Promise.allSettled([
         apiFetch(`/valhalla/balances/available`),
         apiFetch(`/valhalla/balances/view?start_date=${startOfMonthStr}`),
 
@@ -100,6 +120,10 @@
 
   <h1 class="hall-title">The Hall</h1>
   <p class="blessing">— {quote}</p>
+
+  {#if ragnarokNudge}
+    <p class="ragnarok-nudge">It has been {ragnarokNudge} days since your last entry.</p>
+  {/if}
 
   {#if loading}
     <p class="loading">The ledger stirs...</p>
@@ -312,6 +336,15 @@
     margin-bottom: 2rem;
     text-align: center;
     max-width: 400px;
+  }
+
+  .ragnarok-nudge {
+    position: relative;
+    z-index: 2;
+    font-size: 0.8rem;
+    color: #d69f9f;
+    opacity: 0.8;
+    margin-bottom: 1rem;
   }
 
   .summary {
