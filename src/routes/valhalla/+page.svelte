@@ -126,6 +126,7 @@
     { name: "The Reckoning", desc: "Reconcile with the bank", href: "/valhalla/reckoning" },
     { name: "The Hoard", desc: "Assets & net worth", href: "/valhalla/hoard" },
     { name: "The Glen", desc: "Money & feeling, side by side", href: "/valhalla/glen" },
+    { name: "The History", desc: "What moved, and when", href: "/valhalla/history" },
   ];
 </script>
 
