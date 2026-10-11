@@ -6,11 +6,10 @@
   let balance = $state(null);
   let monthBalance = $state(null);
   let commitments = $state([]);
-  let hoard = $state(null);
-  let lastReckonedDate = $state(null);
   let loading = $state(true);
   let error = $state("");
   let projectedEOM = $state(null);
+  let lowest = $state(null);
   let ragnarokNudge = $state(null);
 
   const quotes = [
@@ -40,14 +39,33 @@
   const todayStr = now.toISOString().slice(0, 10);
   const monthName = now.toLocaleString('default', { month: 'long' });
 
+  // -$439.95, not $-439.95
+  function money(n) {
+    const v = Number(n) || 0;
+    const rounded = Number(v.toFixed(2));
+    const body = Math.abs(rounded).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    return `${rounded < 0 ? "-" : ""}$${body}`;
+  }
+
+  // "YYYY-MM-DD" -> "Oct 28", read as a local calendar day. Never use
+  // new Date("YYYY-MM-DD") for display: it parses as UTC midnight and lands
+  // on the previous day in US time zones.
+  function fmtShort(dateStr) {
+    const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('default', { month: 'short', day: 'numeric' });
+  }
+
   const upcomingBurdens = $derived(
     commitments.filter(c => c.due_date >= todayStr && c.due_date <= endOfMonthStr)
   );
   const upcomingTotal = $derived(
     upcomingBurdens.reduce((sum, c) => sum + (c.amount || 0), 0)
   );
-  const projectedEndOfMonth = $derived(
-    monthBalance !== null ? monthBalance.balance - upcomingTotal : null
+  const lowestWhen = $derived(
+    lowest ? (lowest.date === todayStr ? "today" : `on ${fmtShort(lowest.date)}`) : ""
   );
 
 
@@ -70,14 +88,11 @@
         }
       }
 
-      const [balRes, monthRes, setupRes, hoardRes, reckonedRes, projRes] = await Promise.allSettled([
+      const [balRes, monthRes, setupRes, projRes] = await Promise.allSettled([
         apiFetch(`/valhalla/balances/available`),
         apiFetch(`/valhalla/balances/view?start_date=${startOfMonthStr}`),
-
         apiFetch(`/valhalla/setup/dashboard`),
-        apiFetch(`/valhalla/hoard/view`),
-        apiFetch(`/valhalla/setup/last-reckoned`),
-        apiFetch(`/valhalla/balances/projection/end-of-month`),
+        apiFetch(`/valhalla/balances/projection/daily`),
       ]);
 
       if (balRes.status !== "fulfilled") {
@@ -90,12 +105,13 @@
       const setupData = setupRes.status === "fulfilled" ? setupRes.value : { commitments: [] };
       commitments = setupData.commitments ?? [];
 
-      hoard = hoardRes.status === "fulfilled" ? hoardRes.value : null;
-
-      const reckonedData = reckonedRes.status === "fulfilled" ? reckonedRes.value : {};
-      lastReckonedDate = reckonedData.last_reckoned_date ?? null;
-
-      projectedEOM = projRes.status === "fulfilled" ? projRes.value.balance : null;
+      // The daily projection runs through the end of this month, so its last
+      // day is the projected month's end and its minimum is the lowest point.
+      const projDays = projRes.status === "fulfilled" ? (projRes.value.daily ?? []) : [];
+      if (projDays.length > 0) {
+        projectedEOM = projDays[projDays.length - 1].balance;
+        lowest = projDays.reduce((min, d) => (d.balance < min.balance ? d : min), projDays[0]);
+      }
     } catch (e) {
       error = e.message;
     } finally {
@@ -131,34 +147,13 @@
     <p class="error">{error}</p>
   {:else}
     <div class="summary">
-      <div class="summary-item">
-        <span class="label">Harvest</span>
-        <span class="value income">${balance.income_total.toFixed(2)}</span>
-      </div>
-      <div class="summary-item">
-        <span class="label">The Outpour</span>
-        <span class="value expense">${balance.expense_total.toFixed(2)}</span>
-      </div>
       <div class="summary-item balance-item">
         <span class="label">Balance</span>
         <span class="value {balance.balance >= 0 ? 'positive' : 'negative'}">
-          ${balance.balance.toFixed(2)}
+          {money(balance.balance)}
         </span>
       </div>
     </div>
-
-    {#if hoard}
-      <div class="secondary-row">
-        <div class="mini-stat">
-          <span class="mini-label">Net Worth</span>
-          <span class="mini-value {hoard.net_worth >= 0 ? 'positive' : 'negative'}">${hoard.net_worth.toFixed(2)}</span>
-        </div>
-        <div class="mini-stat">
-          <span class="mini-label">Last Reckoned</span>
-          <span class="mini-value neutral">{lastReckonedDate ?? "Not yet"}</span>
-        </div>
-      </div>
-    {/if}
 
     <div class="moon-section">
       <h2 class="moon-title">The Turning of {monthName}</h2>
@@ -167,30 +162,31 @@
         <div class="moon-marker" style="left: {monthProgress * 100}%"></div>
       </div>
       <p class="moon-caption">Day {dayOfMonth} of {daysInMonth}</p>
-      
+
       <a href="/valhalla/foretelling" class="foretelling-stone">
-  <div class="stone-glow"></div>
-  <span class="stone-label">The Foretelling</span>
-  {#if projectedEOM !== null}
-    <span class="stone-value {projectedEOM >= 0 ? 'positive' : 'negative'}">
-      ${projectedEOM.toFixed(2)}
-    </span>
-  {/if}
-  <span class="stone-caption">by month's end</span>
-        </a>
+        <div class="stone-glow"></div>
+        <span class="stone-label">The Foretelling</span>
+        {#if projectedEOM !== null}
+          <span class="stone-value {projectedEOM >= 0 ? 'positive' : 'negative'}">
+            {money(projectedEOM)}
+          </span>
+        {/if}
+        <span class="stone-caption">projected at month's end</span>
+        {#if lowest}
+          <span class="stone-low {lowest.balance >= 0 ? 'positive' : 'negative'}">
+            Lowest: {money(lowest.balance)} {lowestWhen}
+          </span>
+        {/if}
+      </a>
 
       <div class="cashflow-stats">
         <div class="cashflow-item">
           <span class="label">So Far This Month</span>
-          <span class="value {monthBalance.balance >= 0 ? 'positive' : 'negative'}">${monthBalance.balance.toFixed(2)}</span>
+          <span class="value {monthBalance.balance >= 0 ? 'positive' : 'negative'}">{money(monthBalance.balance)}</span>
         </div>
         <div class="cashflow-item">
           <span class="label">Still Owed</span>
-          <span class="value expense">${upcomingTotal.toFixed(2)}</span>
-        </div>
-        <div class="cashflow-item">
-          <span class="label">Projected at Month's End</span>
-          <span class="value {projectedEndOfMonth >= 0 ? 'positive' : 'negative'}">${projectedEndOfMonth.toFixed(2)}</span>
+          <span class="value expense">{money(upcomingTotal)}</span>
         </div>
       </div>
 
@@ -199,7 +195,7 @@
           {#each upcomingBurdens as c}
             <div class="upcoming-row">
               <span>{c.name}</span>
-              <span>${c.amount?.toFixed?.(2) ?? c.amount} — {c.due_date}</span>
+              <span>{money(c.amount)} — {c.due_date}</span>
             </div>
           {/each}
         </div>
@@ -256,65 +252,73 @@
   }
 
   .foretelling-stone {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
-  width: 220px;
-  padding: 1.5rem;
-  margin-bottom: 2.5rem;
-  background: radial-gradient(circle at center, rgba(220, 200, 240, 0.08), rgba(10, 14, 20, 0.6));
-  border: 1px solid rgba(220, 200, 240, 0.3);
-  border-radius: 16px;
-  text-decoration: none;
-  color: inherit;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  overflow: hidden;
-}
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    width: 220px;
+    padding: 1.5rem;
+    margin: 0 auto 2.5rem;
+    background: radial-gradient(circle at center, rgba(220, 200, 240, 0.08), rgba(10, 14, 20, 0.6));
+    border: 1px solid rgba(220, 200, 240, 0.3);
+    border-radius: 16px;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
 
-.foretelling-stone:hover {
-  border-color: rgba(220, 200, 240, 0.7);
-  box-shadow: 0 0 30px rgba(220, 200, 240, 0.25);
-  transform: translateY(-3px);
-}
+  .foretelling-stone:hover {
+    border-color: rgba(220, 200, 240, 0.7);
+    box-shadow: 0 0 30px rgba(220, 200, 240, 0.25);
+    transform: translateY(-3px);
+  }
 
-.stone-glow {
-  position: absolute;
-  inset: -50%;
-  background: radial-gradient(circle, rgba(220, 200, 240, 0.15), transparent 70%);
-  animation: stoneGlowPulse 4s ease-in-out infinite alternate;
-  pointer-events: none;
-}
+  .stone-glow {
+    position: absolute;
+    inset: -50%;
+    background: radial-gradient(circle, rgba(220, 200, 240, 0.15), transparent 70%);
+    animation: stoneGlowPulse 4s ease-in-out infinite alternate;
+    pointer-events: none;
+  }
 
-@keyframes stoneGlowPulse {
-  from { opacity: 0.5; }
-  to   { opacity: 1; }
-}
+  @keyframes stoneGlowPulse {
+    from { opacity: 0.5; }
+    to   { opacity: 1; }
+  }
 
-.stone-label {
-  position: relative;
-  font-family: 'Cinzel', serif;
-  font-size: 0.95rem;
-  letter-spacing: 0.08em;
-  opacity: 0.85;
-}
+  .stone-label {
+    position: relative;
+    font-family: 'Cinzel', serif;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    opacity: 0.85;
+  }
 
-.stone-value {
-  position: relative;
-  font-family: 'Cinzel', serif;
-  font-size: 1.6rem;
-  text-shadow: 0 0 12px currentColor;
-}
+  .stone-value {
+    position: relative;
+    font-family: 'Cinzel', serif;
+    font-size: 1.6rem;
+    text-shadow: 0 0 12px currentColor;
+  }
 
-.stone-caption {
-  position: relative;
-  font-size: 0.7rem;
-  opacity: 0.5;
-  font-style: italic;
-}
+  .stone-caption {
+    position: relative;
+    font-size: 0.7rem;
+    opacity: 0.5;
+    font-style: italic;
+  }
+
+  .stone-low {
+    position: relative;
+    margin-top: 0.3rem;
+    font-size: 0.75rem;
+    opacity: 0.8;
+    text-align: center;
+  }
 
 
   .hall-title {
@@ -351,8 +355,9 @@
     position: relative;
     z-index: 2;
     display: flex;
+    justify-content: center;
     gap: 2rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
     padding: 1.5rem 2.5rem;
     background: rgba(10, 14, 20, 0.6);
     border: 1px solid rgba(150, 190, 220, 0.2);
@@ -379,42 +384,9 @@
     font-family: 'Cinzel', serif;
   }
 
-  .income { color: #9fd6a0; }
   .expense { color: #d69f9f; }
   .positive { color: #9fd6a0; }
   .negative { color: #d69f9f; }
-  .neutral { color: #dce8f0; }
-
-  .secondary-row {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    gap: 2rem;
-    margin-bottom: 2rem;
-  }
-
-  .mini-stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.2rem;
-    padding: 0.6rem 1.2rem;
-    background: rgba(150, 190, 220, 0.05);
-    border: 1px solid rgba(150, 190, 220, 0.15);
-    border-radius: 8px;
-  }
-
-  .mini-label {
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    opacity: 0.5;
-  }
-
-  .mini-value {
-    font-size: 0.95rem;
-    font-family: 'Cinzel', serif;
-  }
 
   .moon-section {
     position: relative;
@@ -453,7 +425,7 @@
     border-radius: 999px;
     box-shadow: 0 0 16px rgba(220, 200, 240, 0.5);
     transition: width 0.3s ease;
-}
+  }
 
   .moon-marker {
     position: absolute;
@@ -464,7 +436,7 @@
     border-radius: 50%;
     box-shadow: 0 0 14px rgba(240, 230, 255, 1), 0 0 24px rgba(220, 200, 240, 0.6);
     transform: translate(-50%, -50%);
-}
+  }
 
 
   .moon-caption {

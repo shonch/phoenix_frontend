@@ -2,6 +2,11 @@
   import { onMount } from "svelte";
   import { apiFetch } from "$lib/api";
 
+  // How many months past the current one the arrows can reach. The daily
+  // projection is fetched once out to the end of that last month, so moving
+  // between months never needs another request.
+  const MAX_MONTHS_AHEAD = 3;
+
   let daily = $state([]);
   let foretoldTransactions = $state([]);
   let outlook = $state(null);
@@ -9,6 +14,7 @@
   let error = $state("");
   let expandedDate = $state(null);
   let flashingDate = $state(null);
+  let monthOffset = $state(0);
 
   // Row actions on the Awaiting Arrival list
   let editingId = $state(null);
@@ -34,6 +40,15 @@
     return new Date(y, m - 1, d);
   }
 
+  // A local Date -> "YYYY-MM-DD" using its own calendar fields (no UTC shift)
+  function isoDay(d) {
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${d.getFullYear()}-${mm}-${dd}`;
+  }
+
+  const baseDate = parseDate(todayStr);
+
   function fmtDate(dateStr, opts) {
     if (!dateStr) return "";
     return parseDate(dateStr).toLocaleDateString('default', opts);
@@ -51,6 +66,31 @@
 
   const cents = (n) => Math.round((Number(n) || 0) * 100);
 
+  // ---------- The month being viewed ----------
+
+  const viewStart = $derived(
+    new Date(baseDate.getFullYear(), baseDate.getMonth() + monthOffset, 1)
+  );
+  const viewKey = $derived(isoDay(viewStart).slice(0, 7)); // "YYYY-MM"
+  const viewTitle = $derived(
+    viewStart.toLocaleString('default', { month: 'long', year: 'numeric' })
+  );
+
+  // Every projected day that falls in the viewed month. The current month
+  // starts today (earlier days have already happened); later months start
+  // on the 1st.
+  const monthDays = $derived(daily.filter((d) => d.date.startsWith(viewKey)));
+
+  const monthEnd = $derived(
+    monthDays.length > 0 ? monthDays[monthDays.length - 1].balance : null
+  );
+
+  // Does the viewed month have any foretold income at all? The projection
+  // counts only what has been foretold, so an empty month deserves a warning.
+  const monthHasForetoldIncome = $derived(
+    foretoldTransactions.some((t) => t.type === "income" && t.date.startsWith(viewKey))
+  );
+
   const byDate = $derived.by(() => {
     const map = new Map();
     for (const d of daily) {
@@ -60,15 +100,15 @@
   });
 
   const calendarCells = $derived.by(() => {
-    if (daily.length === 0) return [];
+    if (monthDays.length === 0) return [];
 
-    const startWeekday = parseDate(daily[0].date).getDay();
+    const startWeekday = parseDate(monthDays[0].date).getDay();
 
     const cells = [];
     for (let i = 0; i < startWeekday; i++) {
       cells.push(null);
     }
-    for (const d of daily) {
+    for (const d of monthDays) {
       cells.push(d);
     }
     return cells;
@@ -92,8 +132,23 @@
     [...foretoldTransactions].sort((a, b) => a.date.localeCompare(b.date))
   );
 
+  function goToMonth(offset) {
+    if (offset < 0 || offset > MAX_MONTHS_AHEAD) return;
+    monthOffset = offset;
+    expandedDate = null;
+    flashingDate = null;
+  }
+
   async function loadDaily() {
-    const data = await apiFetch(`/valhalla/balances/projection/daily`);
+    // Project out to the last day of the furthest month the arrows can reach
+    const horizonEnd = new Date(
+      baseDate.getFullYear(),
+      baseDate.getMonth() + MAX_MONTHS_AHEAD + 1,
+      0
+    );
+    const data = await apiFetch(
+      `/valhalla/balances/projection/daily?through_date=${encodeURIComponent(isoDay(horizonEnd))}`
+    );
     daily = data.daily ?? [];
   }
 
@@ -149,7 +204,7 @@
   // Day number; the first cell and the 1st of each month also show the month
   function dayLabel(dateStr) {
     const d = parseDate(dateStr);
-    if (d.getDate() === 1 || dateStr === daily[0]?.date) {
+    if (d.getDate() === 1 || dateStr === monthDays[0]?.date) {
       return `${d.toLocaleString('default', { month: 'short' })} ${d.getDate()}`;
     }
     return String(d.getDate());
@@ -407,6 +462,52 @@
           <p class="outlook-note">No safety floor set — measured against $0.</p>
         {/if}
       </section>
+    {/if}
+
+    <div class="month-nav">
+      <button
+        type="button"
+        class="nav-rune"
+        onclick={() => goToMonth(monthOffset - 1)}
+        disabled={monthOffset === 0}
+        title="Back a month"
+        aria-label="Previous month"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+          <polyline points="16 4 7 12 16 20" />
+        </svg>
+      </button>
+
+      <div class="month-heading">
+        <span class="month-name">{viewTitle}</span>
+        {#if monthEnd !== null}
+          <span class="month-end">
+            Ends the month at
+            <strong class={monthEnd >= 0 ? 'positive' : 'negative'}>{money(monthEnd)}</strong>
+          </span>
+        {/if}
+      </div>
+
+      <button
+        type="button"
+        class="nav-rune"
+        onclick={() => goToMonth(monthOffset + 1)}
+        disabled={monthOffset >= MAX_MONTHS_AHEAD}
+        title="Forward a month"
+        aria-label="Next month"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true">
+          <polyline points="8 4 17 12 8 20" />
+        </svg>
+      </button>
+    </div>
+
+    {#if monthOffset > 0 && !monthHasForetoldIncome}
+      <p class="month-note">
+        No income is foretold for this month — the projection counts only what you have foretold.
+      </p>
     {/if}
 
     <div class="weekday-row">
@@ -731,6 +832,71 @@
 
   .outlook-note {
     margin: 0.6rem 0 0 0;
+    font-size: 0.75rem;
+    opacity: 0.55;
+    font-style: italic;
+  }
+
+  .month-nav {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .nav-rune {
+    width: 2.3rem;
+    height: 2.3rem;
+    border-radius: 50%;
+    border: 1px solid rgba(220, 200, 240, 0.3);
+    background: rgba(220, 200, 240, 0.05);
+    color: #e8dcf0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .nav-rune:hover:not(:disabled) {
+    border-color: rgba(220, 200, 240, 0.7);
+    background: rgba(220, 200, 240, 0.14);
+    box-shadow: 0 0 12px rgba(220, 200, 240, 0.25);
+  }
+
+  .nav-rune:disabled {
+    opacity: 0.25;
+    cursor: default;
+  }
+
+  .month-heading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    text-align: center;
+  }
+
+  .month-name {
+    font-family: 'Cinzel', serif;
+    font-size: 1.2rem;
+    letter-spacing: 0.06em;
+    text-shadow: 0 0 12px rgba(220, 200, 240, 0.3);
+  }
+
+  .month-end {
+    font-size: 0.8rem;
+    opacity: 0.8;
+  }
+
+  .month-note {
+    position: relative;
+    z-index: 2;
+    margin: -0.3rem 0 1rem 0;
+    text-align: center;
     font-size: 0.75rem;
     opacity: 0.55;
     font-style: italic;
