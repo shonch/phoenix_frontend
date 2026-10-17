@@ -175,21 +175,16 @@ function handleCreatedTags(tag: any) {
   console.log("UPDATED TAGS:", s.tags);
 }
 
-
-
-
   async function offerRitual() {
-  console.log("OFFER RITUAL — building fragment");
+    console.log("OFFER RITUAL — building fragment");
 
-  const allSteps = steps.map(s => $state.snapshot(s));
+    const allSteps = steps.map((s) => $state.snapshot(s));
 
+    const fragment = structuredClone(buildFragment(allSteps, ritualType));
 
-  const fragment = structuredClone(buildFragment(allSteps, ritualType));
-  // ...
+    console.log("FRAGMENT:", fragment);
 
-  console.log("FRAGMENT:", fragment);
-
-   try {
+    try {
       phoenixFragment = await apiFetch(`/rituals/ingest/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -200,24 +195,28 @@ function handleCreatedTags(tag: any) {
       return;
     }
 
-   closingLine = generateInscription(fragment);
+    closingLine = generateInscription(fragment);
     stage = "closing";
     await invalidateAll(); // refresh dashboard data now that a real fragment exists
 
-    // Reset ritual state so the NEXT ritual returns to selection instead
-    // of reusing this one's leftover type/steps.
+    console.log("RITUAL COMPLETE — fragment:", phoenixFragment);
+  }
+
+  // Runs when the person leaves the closing screen. Resets the ritual state so
+  // the NEXT ritual starts clean instead of reusing this one's type and steps.
+  function returnToCircle() {
+    stage = "select";
     hasClassified = false;
     ritualType = undefined;
     currentStep = 0;
     capturedSteps = [];
     steps = structuredClone(ritualSteps);
-    stage = "select";
-
-    console.log("RITUAL COMPLETE — fragment:", phoenixFragment);
+    phoenixFragment = null;
+    closingLine = "";
     console.log("RITUAL STATE RESET FOR NEXT RITUAL");
-  
+  }
 
-}
+
 </script>
 
 <div class="fire-backdrop">
@@ -300,6 +299,9 @@ function handleCreatedTags(tag: any) {
             <li>{tag.name}</li>
           {/each}
         </ul>
+      </div>
+            <div class="nav">
+        <button class="offer" onclick={returnToCircle}>Return to the circle</button>
       </div>
     </div>
   {/if}
